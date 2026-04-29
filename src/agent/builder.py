@@ -51,13 +51,23 @@ def render_system_prompt(*, timezone: str) -> str:
     )
 
 
-async def build_agent(*, settings: Settings, checkpointer: Any) -> Any:
+async def build_agent(
+    *,
+    settings: Settings,
+    checkpointer: Any,
+    calendar_client: GoogleCalendarClient | None = None,
+    timezone: str | None = None,
+) -> Any:
     """Construct the read-only calendar agent.
 
     Args:
         settings: Application settings.
         checkpointer: A LangGraph checkpointer (e.g. ``SqliteSaver``) used for
             multi-turn conversation memory keyed by Telegram ``chat_id``.
+        calendar_client: Optional calendar client (for testing/mocking). If None,
+            creates a real GoogleCalendarClient.
+        timezone: Optional timezone override (for testing). If None, uses
+            settings.default_timezone or fetches from Calendar API.
 
     Returns:
         Compiled agent ready to ``ainvoke``.
@@ -73,19 +83,23 @@ async def build_agent(*, settings: Settings, checkpointer: Any) -> Any:
 
     model = init_chat_model(**init_kwargs)
 
-    client = GoogleCalendarClient(token_path=settings.google_oauth_token_path)
-    tools = build_calendar_tools(client)
+    # Use provided client or create real one
+    if calendar_client is None:
+        calendar_client = GoogleCalendarClient(token_path=settings.google_oauth_token_path)
 
-    timezone: str
-    if settings.default_timezone:
-        timezone = settings.default_timezone
-    else:
-        try:
-            tz = await client.get_timezone()
-            timezone = tz if tz else "UTC"
-        except Exception:
-            log.warning("Failed to fetch timezone from Calendar API; falling back to UTC")
-            timezone = "UTC"
+    tools = build_calendar_tools(calendar_client)
+
+    # Use provided timezone or determine it
+    if timezone is None:
+        if settings.default_timezone:
+            timezone = settings.default_timezone
+        else:
+            try:
+                tz = await calendar_client.get_timezone()
+                timezone = tz if tz else "UTC"
+            except Exception:
+                log.warning("Failed to fetch timezone from Calendar API; falling back to UTC")
+                timezone = "UTC"
 
     @dynamic_prompt
     def _system_prompt(request: ModelRequest) -> str:
