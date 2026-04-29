@@ -39,16 +39,18 @@ uv sync
 ```bash
 cp .env.example .env
 # Edit .env and fill in TELEGRAM_BOT_TOKEN, ALLOWED_TELEGRAM_USER_IDS,
-# LLM_API_KEY, GOOGLE_OAUTH_CLIENT_SECRETS_PATH, DEFAULT_TIMEZONE.
+# LLM_PROVIDER (openai/anthropic/etc), LLM_MODEL, LLM_API_KEY,
+# GOOGLE_OAUTH_CLIENT_SECRETS_PATH, DEFAULT_TIMEZONE.
 ```
 
 ### 3. Create a Google OAuth client
 
 1. Go to https://console.cloud.google.com/ → create a project.
 2. APIs & Services → Library → enable **Google Calendar API**.
-3. APIs & Services → Credentials → Create Credentials → **OAuth client ID** →
+3. APIs & Services → **OAuth consent screen** → External → fill in app name/email → **add yourself as a Test user**.
+4. APIs & Services → Credentials → Create Credentials → **OAuth client ID** →
    choose **Desktop app**.
-4. Download the JSON file. Save it where `GOOGLE_OAUTH_CLIENT_SECRETS_PATH`
+5. Download the JSON file. Save it where `GOOGLE_OAUTH_CLIENT_SECRETS_PATH`
    in your `.env` points (default: `./credentials.json`).
 
 ### 4. Run the one-time auth bootstrap
@@ -77,6 +79,25 @@ uv run python main.py
 ```
 
 Message the bot on Telegram. Try: *"What's on my calendar today?"*
+
+## Verification
+
+### Smoke test
+Message your bot on Telegram:
+- `what's on my calendar today?` — should return today's events
+- `do I have anything tomorrow?` — validates date resolution
+- `find my next meeting with <name>` — tests search
+
+### Memory test
+1. Ask: `what events do I have on Friday?`
+2. Follow up: `what's the location of the first one?`
+
+The bot should remember Friday's events. If not, check that `data/checkpoints.sqlite` exists.
+
+### Persistence test
+1. Have a conversation, then stop the bot (Ctrl+C)
+2. Restart: `uv run python main.py`
+3. Send a follow-up — it should remember the prior session
 
 ## Optional: LangSmith tracing
 
