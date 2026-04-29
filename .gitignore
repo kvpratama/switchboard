@@ -216,3 +216,11 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# Switchboard runtime state
+data/*
+!data/.gitkeep
+*.sqlite
+*.sqlite-journal
+token.json
+credentials.json
