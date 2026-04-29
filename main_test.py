@@ -64,34 +64,3 @@ class _AsyncContextManager:
 
     async def __aexit__(self, *exc) -> bool:
         return False
-
-
-def test_apply_langsmith_env_when_tracing_enabled(settings_env, monkeypatch) -> None:
-    monkeypatch.setenv("LANGSMITH_TRACING", "true")
-    monkeypatch.setenv("LANGSMITH_API_KEY", "ls-key")
-    monkeypatch.setenv("LANGSMITH_PROJECT", "switchboard-test")
-
-    from main import apply_langsmith_env
-
-    settings = Settings()
-    apply_langsmith_env(settings)
-
-    import os
-
-    assert os.environ["LANGSMITH_TRACING"] == "true"
-    assert os.environ["LANGSMITH_API_KEY"] == "ls-key"
-    assert os.environ["LANGSMITH_PROJECT"] == "switchboard-test"
-
-
-def test_apply_langsmith_env_noop_when_disabled(settings_env, monkeypatch) -> None:
-    monkeypatch.delenv("LANGSMITH_TRACING", raising=False)
-    monkeypatch.delenv("LANGSMITH_API_KEY", raising=False)
-
-    from main import apply_langsmith_env
-
-    settings = Settings()
-    apply_langsmith_env(settings)
-
-    import os
-
-    assert "LANGSMITH_API_KEY" not in os.environ

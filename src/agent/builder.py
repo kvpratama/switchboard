@@ -30,7 +30,14 @@ def render_system_prompt(*, timezone: str) -> str:
     Returns:
         The system prompt string.
     """
-    now = datetime.now(ZoneInfo(timezone))
+    try:
+        tz = ZoneInfo(timezone)
+    except Exception:
+        log.warning(f"Invalid timezone '{timezone}'; falling back to UTC")
+        tz = ZoneInfo("UTC")
+        timezone = "UTC"
+
+    now = datetime.now(tz)
     return (
         "You are Switchboard, a helpful assistant that answers questions "
         "about the user's Google Calendar.\n"
@@ -75,10 +82,10 @@ async def build_agent(*, settings: Settings, checkpointer: Any) -> Any:
     else:
         try:
             tz = await client.get_timezone()
+            timezone = tz if tz else "UTC"
         except Exception:
-            log.warning("Failed to fetch timezone from Calendar API; falling back to system local")
-            tz = datetime.now().astimezone().tzname() or "UTC"
-        timezone = tz if tz else "UTC"
+            log.warning("Failed to fetch timezone from Calendar API; falling back to UTC")
+            timezone = "UTC"
 
     @dynamic_prompt
     def _system_prompt(request: ModelRequest) -> str:

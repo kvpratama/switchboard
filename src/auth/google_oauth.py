@@ -36,7 +36,13 @@ def load_credentials(token_path: Path) -> Credentials:
             "Run `uv run python -m src.auth.bootstrap` first."
         )
 
-    creds = Credentials.from_authorized_user_file(str(token_path), READONLY_SCOPES)
+    try:
+        creds = Credentials.from_authorized_user_file(str(token_path), READONLY_SCOPES)
+    except Exception as e:
+        raise GoogleAuthError(
+            f"Failed to load Google credentials from {token_path}: {e}. "
+            "Run `uv run python -m src.auth.bootstrap` to re-authorize."
+        ) from e
 
     if creds.valid:
         return creds

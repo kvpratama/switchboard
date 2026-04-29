@@ -13,6 +13,7 @@ For headless servers, SSH-tunnel the local OAuth port to your laptop:
 from __future__ import annotations
 
 import logging
+import os
 import sys
 
 from google_auth_oauthlib.flow import InstalledAppFlow
@@ -39,11 +40,17 @@ def main() -> int:
         return 1
 
     flow = InstalledAppFlow.from_client_secrets_file(str(secrets), READONLY_SCOPES)
-    creds = flow.run_local_server(port=0)
+    creds = flow.run_local_server(port=8080, open_browser=False)
 
     token_path = settings.google_oauth_token_path
     token_path.parent.mkdir(parents=True, exist_ok=True)
-    token_path.write_text(creds.to_json())
+
+    # Write with restrictive permissions (owner read/write only)
+    fd = os.open(token_path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+    try:
+        os.write(fd, creds.to_json().encode("utf-8"))
+    finally:
+        os.close(fd)
 
     log.info("Wrote credentials to %s", token_path)
     return 0

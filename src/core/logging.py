@@ -6,6 +6,7 @@ import logging
 import sys
 
 _FORMAT = "%(asctime)s %(levelname)-7s %(name)s | %(message)s"
+_HANDLER_NAME = "switchboard_console_handler"
 
 
 def configure_logging(level: str = "INFO") -> None:
@@ -19,11 +20,13 @@ def configure_logging(level: str = "INFO") -> None:
         numeric = logging.INFO
 
     root = logging.getLogger()
-    # Clear handlers from any prior configure_logging call (test re-runs).
+    # Remove only the handler owned by this module from prior configure_logging calls.
     for handler in list(root.handlers):
-        root.removeHandler(handler)
+        if getattr(handler, "name", None) == _HANDLER_NAME:
+            root.removeHandler(handler)
 
     handler = logging.StreamHandler(stream=sys.stderr)
+    handler.set_name(_HANDLER_NAME)
     handler.setFormatter(logging.Formatter(_FORMAT))
     root.addHandler(handler)
     root.setLevel(numeric)

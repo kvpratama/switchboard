@@ -61,5 +61,10 @@ class Settings(BaseSettings):
     def _parse_user_ids(cls, value: object) -> object:
         """Parse a CSV string into list[int]; pass through other inputs unchanged."""
         if isinstance(value, str):
-            return [int(part.strip()) for part in value.split(",") if part.strip()]
+            parsed = [int(part.strip()) for part in value.split(",") if part.strip()]
+            if not parsed:
+                raise ValueError(
+                    "ALLOWED_TELEGRAM_USER_IDS cannot be empty; provide at least one user ID"
+                )
+            return parsed
         return value
