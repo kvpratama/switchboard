@@ -98,6 +98,32 @@ async def test_get_event_returns_compact_payload(
     assert event["description"] == "Daily sync"
 
 
+async def test_get_timezone_returns_value_from_settings(
+    tmp_path, fake_service: MagicMock, fake_credentials: MagicMock
+) -> None:
+    fake_service.settings.return_value.get.return_value.execute.return_value = {
+        "id": "timezone",
+        "value": "Europe/Paris",
+    }
+    client = GoogleCalendarClient(token_path=tmp_path / "token.json")
+
+    tz = await client.get_timezone()
+
+    assert tz == "Europe/Paris"
+    fake_service.settings.return_value.get.assert_called_once_with(setting="timezone")
+
+
+async def test_get_timezone_returns_utc_on_missing_value(
+    tmp_path, fake_service: MagicMock, fake_credentials: MagicMock
+) -> None:
+    fake_service.settings.return_value.get.return_value.execute.return_value = {}
+    client = GoogleCalendarClient(token_path=tmp_path / "token.json")
+
+    tz = await client.get_timezone()
+
+    assert tz == "UTC"
+
+
 async def test_http_error_is_wrapped(
     tmp_path, fake_service: MagicMock, fake_credentials: MagicMock
 ) -> None:

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 from datetime import datetime
 from typing import Any
 from zoneinfo import ZoneInfo
@@ -13,6 +14,8 @@ from langchain.chat_models import init_chat_model
 from src.calendar.client import GoogleCalendarClient
 from src.calendar.tools import build_calendar_tools
 from src.core.config import Settings
+
+log = logging.getLogger(__name__)
 
 
 def render_system_prompt(*, timezone: str) -> str:
@@ -41,7 +44,7 @@ def render_system_prompt(*, timezone: str) -> str:
     )
 
 
-def build_agent(*, settings: Settings, checkpointer: Any) -> Any:
+async def build_agent(*, settings: Settings, checkpointer: Any) -> Any:
     """Construct the read-only calendar agent.
 
     Args:
@@ -66,7 +69,16 @@ def build_agent(*, settings: Settings, checkpointer: Any) -> Any:
     client = GoogleCalendarClient(token_path=settings.google_oauth_token_path)
     tools = build_calendar_tools(client)
 
-    timezone = settings.default_timezone
+    timezone: str
+    if settings.default_timezone:
+        timezone = settings.default_timezone
+    else:
+        try:
+            tz = await client.get_timezone()
+        except Exception:
+            log.warning("Failed to fetch timezone from Calendar API; falling back to system local")
+            tz = datetime.now().astimezone().tzname() or "UTC"
+        timezone = tz if tz else "UTC"
 
     @dynamic_prompt
     def _system_prompt(request: ModelRequest) -> str:

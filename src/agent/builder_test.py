@@ -19,7 +19,7 @@ def test_render_system_prompt_includes_timezone_and_current_time() -> None:
     assert "20" in prompt  # current year prefix
 
 
-def test_build_agent_wires_model_and_tools(settings_env, mocker) -> None:
+async def test_build_agent_wires_model_and_tools(settings_env, mocker) -> None:
     fake_model = FakeListChatModel(responses=["ok"])
     init = mocker.patch("src.agent.builder.init_chat_model", return_value=fake_model)
     fake_client = MagicMock()
@@ -37,7 +37,7 @@ def test_build_agent_wires_model_and_tools(settings_env, mocker) -> None:
 
     settings = Settings()
     checkpointer = MagicMock(name="checkpointer")
-    agent = build_agent(settings=settings, checkpointer=checkpointer)
+    agent = await build_agent(settings=settings, checkpointer=checkpointer)
 
     assert agent is not None
     assert captured["model"] is fake_model

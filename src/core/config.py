@@ -40,7 +40,7 @@ class Settings(BaseSettings):
     checkpoint_db_path: Path = Field(default=Path("./data/checkpoints.sqlite"))
 
     # Time handling
-    default_timezone: str = Field(...)
+    default_timezone: str | None = None
 
     # Logging
     log_level: str = "INFO"

@@ -35,7 +35,7 @@ def apply_langsmith_env(settings: Settings) -> None:
 async def _run_async(settings: Settings) -> None:
     """Manage the AsyncSqliteSaver lifetime around the bot's polling loop."""
     async with AsyncSqliteSaver.from_conn_string(str(settings.checkpoint_db_path)) as checkpointer:
-        agent = build_agent(settings=settings, checkpointer=checkpointer)
+        agent = await build_agent(settings=settings, checkpointer=checkpointer)
         application = build_application(settings=settings, agent=agent)
 
         log.info("Starting Switchboard bot — polling for updates")

@@ -40,7 +40,6 @@ def test_missing_required_var_raises(monkeypatch: pytest.MonkeyPatch) -> None:
         "LLM_MODEL",
         "LLM_API_KEY",
         "GOOGLE_OAUTH_CLIENT_SECRETS_PATH",
-        "DEFAULT_TIMEZONE",
     ):
         monkeypatch.delenv(var, raising=False)
 

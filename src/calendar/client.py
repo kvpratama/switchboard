@@ -49,6 +49,26 @@ class GoogleCalendarClient:
         self._service = build("calendar", "v3", credentials=creds, cache_discovery=False)
         self._calendar_id = calendar_id
 
+    async def get_timezone(self) -> str:
+        """Fetch the user's timezone from Calendar settings.
+
+        Returns:
+            IANA timezone name, e.g. ``America/New_York``.
+
+        Raises:
+            CalendarClientError: If the Calendar API call fails.
+        """
+
+        def _call() -> dict[str, Any]:
+            return self._service.settings().get(setting="timezone").execute()
+
+        try:
+            response = await asyncio.to_thread(_call)
+        except HttpError as exc:
+            raise CalendarClientError(f"get_timezone failed: {exc}") from exc
+
+        return str(response.get("value", "UTC"))
+
     async def list_events(
         self,
         *,
