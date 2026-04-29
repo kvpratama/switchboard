@@ -11,9 +11,9 @@ from src.core.config import Settings
 
 
 def test_render_system_prompt_includes_timezone_and_current_time() -> None:
-    prompt = render_system_prompt(timezone="Asia/Jakarta")
+    prompt = render_system_prompt(timezone="Asia/Tokyo")
 
-    assert "Asia/Jakarta" in prompt
+    assert "Asia/Tokyo" in prompt
     assert "calendar" in prompt.lower()
     # Includes some date-like structure
     assert "20" in prompt  # current year prefix

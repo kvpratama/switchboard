@@ -2,21 +2,26 @@
 
 from __future__ import annotations
 
+import os
 from pathlib import Path
 from typing import Annotated
 
 from pydantic import Field, SecretStr, field_validator
 from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
 
+# Disable .env loading in CI/test environments
+_ENV_FILE = None if os.getenv("CI") else ".env"
+
 
 class Settings(BaseSettings):
     """All runtime configuration. Read once at startup; do not mutate.
 
     Reads from process env and `.env` (via python-dotenv loaded by pydantic-settings).
+    In CI environments (CI=true), .env loading is disabled for test isolation.
     """
 
     model_config = SettingsConfigDict(
-        env_file=".env",
+        env_file=_ENV_FILE,
         env_file_encoding="utf-8",
         case_sensitive=False,
         extra="ignore",
@@ -38,6 +43,7 @@ class Settings(BaseSettings):
 
     # Persistence
     checkpoint_db_path: Path = Field(default=Path("./data/checkpoints.sqlite"))
+    max_conversation_messages: int = Field(default=50)
 
     # Time handling
     default_timezone: str | None = None

@@ -5,6 +5,8 @@ from __future__ import annotations
 import logging
 from typing import Any
 
+from langchain.messages import trim_messages
+from langgraph.types import Overwrite
 from telegram.ext import (
     Application,
     ContextTypes,
@@ -21,6 +23,30 @@ log = logging.getLogger(__name__)
 _GENERIC_ERROR = "Sorry — I couldn't process that just now. Please try again in a moment."
 
 
+async def _trim_conversation_if_needed(
+    agent: Any, config: dict[str, Any], max_messages: int
+) -> None:
+    """Trim conversation history if it exceeds the maximum message count.
+
+    Args:
+        agent: The LangChain agent instance.
+        config: The agent config containing thread_id.
+        max_messages: Maximum number of messages to keep.
+    """
+    state = await agent.aget_state(config)
+    messages = state.values.get("messages", [])
+
+    if len(messages) > max_messages:
+        trimmed = trim_messages(
+            messages,
+            max_tokens=max_messages,
+            token_counter=len,  # Count by number of messages
+            strategy="last",
+            include_system=True,
+        )
+        await agent.aupdate_state(config, {"messages": Overwrite(trimmed)})
+
+
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Forward an incoming text message to the agent and reply with its output.
 
@@ -34,16 +60,22 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         return
 
     agent = context.bot_data["agent"]
+    settings: Settings = context.bot_data["settings"]
     chat_id = update.effective_chat.id
     text = update.message.text
 
+    config = {
+        "configurable": {"thread_id": str(chat_id)},
+        "recursion_limit": 10,
+    }
+
     try:
+        # Trim conversation history to prevent unbounded growth
+        await _trim_conversation_if_needed(agent, config, settings.max_conversation_messages)
+
         result = await agent.ainvoke(
             {"messages": [{"role": "user", "content": text}]},
-            config={
-                "configurable": {"thread_id": str(chat_id)},
-                "recursion_limit": 10,
-            },
+            config=config,
         )
     except Exception:
         log.exception("agent invocation failed for chat_id=%s", chat_id)
@@ -80,6 +112,7 @@ def build_application(*, settings: Settings, agent: Any) -> Application:
     )
 
     application.bot_data["agent"] = agent
+    application.bot_data["settings"] = settings
 
     allowed = AllowedUserFilter(settings.allowed_telegram_user_ids)
     application.add_handler(

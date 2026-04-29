@@ -16,7 +16,7 @@ def test_settings_loads_from_env(settings_env) -> None:
     assert settings.llm_provider == "openai"
     assert settings.llm_model == "gpt-4o-mini"
     assert settings.llm_api_key.get_secret_value() == "test-llm-key"
-    assert settings.default_timezone == "Asia/Jakarta"
+    assert settings.default_timezone == "Asia/Tokyo"
     assert settings.log_level == "INFO"
     assert settings.llm_provider_base_url is None
 

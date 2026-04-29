@@ -2,7 +2,12 @@
 
 from __future__ import annotations
 
+import os
+
 import pytest
+
+# Set CI mode before any imports to prevent .env loading
+os.environ["CI"] = "true"
 
 
 @pytest.fixture
@@ -23,4 +28,4 @@ def settings_env(monkeypatch: pytest.MonkeyPatch, tmp_path) -> None:
     )
     monkeypatch.setenv("GOOGLE_OAUTH_TOKEN_PATH", str(tmp_path / "token.json"))
     monkeypatch.setenv("CHECKPOINT_DB_PATH", str(tmp_path / "checkpoints.sqlite"))
-    monkeypatch.setenv("DEFAULT_TIMEZONE", "Asia/Jakarta")
+    monkeypatch.setenv("DEFAULT_TIMEZONE", "Asia/Tokyo")

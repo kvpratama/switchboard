@@ -10,7 +10,7 @@ from __future__ import annotations
 import json
 from typing import Any
 
-from langchain_core.tools import BaseTool, tool
+from langchain.tools import BaseTool, tool
 
 from src.calendar.client import CalendarClientError, GoogleCalendarClient
 

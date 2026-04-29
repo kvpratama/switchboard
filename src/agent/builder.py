@@ -25,7 +25,7 @@ def render_system_prompt(*, timezone: str) -> str:
     relative dates (today, tomorrow, next Monday) resolve correctly.
 
     Args:
-        timezone: IANA timezone name, e.g. ``Asia/Jakarta``.
+        timezone: IANA timezone name, e.g. ``Asia/Tokyo``.
 
     Returns:
         The system prompt string.

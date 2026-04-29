@@ -4,13 +4,91 @@ from __future__ import annotations
 
 from unittest.mock import AsyncMock, MagicMock
 
-from langchain_core.messages import AIMessage
+from langchain.messages import AIMessage, HumanMessage, SystemMessage
 
 from src.telegram.bot import handle_message
 
 
+async def test_handle_message_trims_conversation_when_exceeds_max() -> None:
+    """Test that conversations are trimmed when they exceed MAX_MESSAGES."""
+    agent = MagicMock()
+
+    # Simulate a long conversation history (60 messages)
+    from langchain_core.messages import BaseMessage
+
+    old_messages: list[BaseMessage] = [SystemMessage(content="System prompt")]
+    old_messages.extend([HumanMessage(content=f"msg {i}") for i in range(59)])
+
+    state_mock = MagicMock()
+    state_mock.values = {"messages": old_messages}
+    agent.aget_state = AsyncMock(return_value=state_mock)
+    agent.aupdate_state = AsyncMock()
+    agent.ainvoke = AsyncMock(return_value={"messages": [AIMessage(content="Response")]})
+
+    update = MagicMock()
+    update.effective_chat.id = 12345
+    update.message.text = "new message"
+    update.message.reply_text = AsyncMock()
+
+    settings_mock = MagicMock()
+    settings_mock.max_conversation_messages = 50
+
+    context = MagicMock()
+    context.bot_data = {"agent": agent, "settings": settings_mock}
+
+    await handle_message(update, context)
+
+    # Should have called update_state to trim
+    agent.aupdate_state.assert_awaited_once()
+    update_call = agent.aupdate_state.call_args
+
+    # Check that messages were trimmed
+    from langgraph.types import Overwrite
+
+    trimmed_messages = update_call.args[1]["messages"]
+    assert isinstance(trimmed_messages, Overwrite)
+    assert len(trimmed_messages.value) == 50  # MAX_MESSAGES
+    assert trimmed_messages.value[0].content == "System prompt"  # System message kept
+
+
+async def test_handle_message_skips_trim_when_under_max() -> None:
+    """Test that trimming is skipped when message count is under MAX_MESSAGES."""
+    agent = MagicMock()
+
+    # Simulate a short conversation (10 messages)
+    short_messages = [HumanMessage(content=f"msg {i}") for i in range(10)]
+
+    state_mock = MagicMock()
+    state_mock.values = {"messages": short_messages}
+    agent.aget_state = AsyncMock(return_value=state_mock)
+    agent.aupdate_state = AsyncMock()
+    agent.ainvoke = AsyncMock(return_value={"messages": [AIMessage(content="Response")]})
+
+    update = MagicMock()
+    update.effective_chat.id = 12345
+    update.message.text = "new message"
+    update.message.reply_text = AsyncMock()
+
+    settings_mock = MagicMock()
+    settings_mock.max_conversation_messages = 50
+
+    context = MagicMock()
+    context.bot_data = {"agent": agent, "settings": settings_mock}
+
+    await handle_message(update, context)
+
+    # Should NOT have called update_state
+    agent.aupdate_state.assert_not_awaited()
+
+
 async def test_handle_message_sends_agent_reply_to_chat() -> None:
     agent = MagicMock()
+
+    # Mock state for trimming check
+    state_mock = MagicMock()
+    state_mock.values = {"messages": []}  # Empty, no trimming needed
+    agent.aget_state = AsyncMock(return_value=state_mock)
+
     agent.ainvoke = AsyncMock(
         return_value={"messages": [AIMessage(content="You have 3 events today.")]}
     )
@@ -20,8 +98,11 @@ async def test_handle_message_sends_agent_reply_to_chat() -> None:
     update.message.text = "what's on today?"
     update.message.reply_text = AsyncMock()
 
+    settings_mock = MagicMock()
+    settings_mock.max_conversation_messages = 50
+
     context = MagicMock()
-    context.bot_data = {"agent": agent}
+    context.bot_data = {"agent": agent, "settings": settings_mock}
 
     await handle_message(update, context)
 
@@ -37,6 +118,12 @@ async def test_handle_message_sends_agent_reply_to_chat() -> None:
 
 async def test_handle_message_apologizes_on_agent_exception() -> None:
     agent = MagicMock()
+
+    # Mock state for trimming check
+    state_mock = MagicMock()
+    state_mock.values = {"messages": []}
+    agent.aget_state = AsyncMock(return_value=state_mock)
+
     agent.ainvoke = AsyncMock(side_effect=RuntimeError("LLM down"))
 
     update = MagicMock()
@@ -44,8 +131,11 @@ async def test_handle_message_apologizes_on_agent_exception() -> None:
     update.message.text = "hi"
     update.message.reply_text = AsyncMock()
 
+    settings_mock = MagicMock()
+    settings_mock.max_conversation_messages = 50
+
     context = MagicMock()
-    context.bot_data = {"agent": agent}
+    context.bot_data = {"agent": agent, "settings": settings_mock}
 
     await handle_message(update, context)
 
