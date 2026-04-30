@@ -32,3 +32,8 @@ def settings_env(monkeypatch: pytest.MonkeyPatch, tmp_path) -> None:
     monkeypatch.setenv("GOOGLE_OAUTH_TOKEN_PATH", str(tmp_path / "token.json"))
     monkeypatch.setenv("CHECKPOINT_DB_PATH", str(tmp_path / "checkpoints.sqlite"))
     monkeypatch.setenv("DEFAULT_TIMEZONE", "Asia/Tokyo")
+    # Explicitly unset optional variables to prevent .env leakage
+    monkeypatch.delenv("LLM_PROVIDER_BASE_URL", raising=False)
+    monkeypatch.delenv("LANGSMITH_TRACING", raising=False)
+    monkeypatch.delenv("LANGSMITH_API_KEY", raising=False)
+    monkeypatch.delenv("LANGSMITH_PROJECT", raising=False)

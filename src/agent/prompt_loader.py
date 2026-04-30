@@ -1,15 +1,28 @@
-"""Fetches the system prompt template from LangSmith with TTL caching."""
+"""Fetches prompt templates from LangSmith with the SDK's built-in cache.
+
+This module configures the LangSmith global prompt cache once on import (TTL =
+300 s, stale-while-revalidate). ``PromptLoader`` is a thin async wrapper around
+``Client.pull_prompt`` that adds:
+
+1. A fallback-template registry used when LangSmith is unreachable on the very
+   first fetch.
+2. Memoization of the last successful template, so a transient refresh failure
+   keeps serving the last good version instead of falling back.
+"""
 
 from __future__ import annotations
 
 import asyncio
 import logging
-from collections.abc import Callable
-from datetime import datetime
 
 from langsmith import Client
+from langsmith.prompt_cache import configure_global_prompt_cache
 
 log = logging.getLogger(__name__)
+
+# Stale-while-revalidate: pulls served from cache for 300 s, then refreshed in
+# the background on the next call. Configured once for the whole process.
+configure_global_prompt_cache(ttl_seconds=300)
 
 FALLBACK_SYSTEM_TEMPLATE = (
     "You are Switchboard, a helpful assistant that answers questions "
@@ -39,25 +52,26 @@ _FALLBACK_REGISTRY: dict[str, str] = {
 
 
 class PromptLoader:
-    """Fetches the system prompt template from LangSmith with TTL caching.
+    """Async wrapper around ``Client.pull_prompt`` with fallback handling.
 
-    - If cached value is fresh (within TTL), returns it.
-    - Otherwise, refetches from LangSmith via ``asyncio.to_thread``.
-    - On a refresh failure, logs a warning and keeps serving the cached value.
-    - On a first-fetch failure, logs an error and returns ``fallback_template``.
+    Caching is delegated entirely to the LangSmith SDK's global prompt cache
+    (configured at module import time). This class only adds:
+
+    - First-fetch fallback: if LangSmith is unreachable on the very first call
+      and we have nothing to serve, return ``fallback_template``.
+    - Last-success memoization: if a later refresh fails, return the most
+      recently fetched template instead of falling back.
 
     Args:
-        prompt_name: Name of the prompt in LangSmith Prompt Hub. Used to
-            look up a fallback template from the built-in registry.
+        prompt_name: Name of the prompt in LangSmith Prompt Hub. Used to look
+            up a fallback template from the built-in registry when
+            ``fallback_template`` is not provided.
         fallback_template: Template string used when LangSmith is unreachable
             on the very first fetch. If ``None``, the fallback is looked up
             from the registry by ``prompt_name``; raises ``KeyError`` if the
             name is not registered.
-        ttl_seconds: Time-to-live for the cached template in seconds.
-        client: Optional LangSmith ``Client`` instance. If ``None``, a default
-            client is created (reads ``LANGSMITH_API_KEY`` from the environment).
-        now_provider: Optional callable returning the current ``datetime``.
-            Injected so tests can freeze time deterministically.
+        client: Optional LangSmith ``Client``. If ``None``, a default client is
+            created (reads ``LANGSMITH_API_KEY`` from the environment).
     """
 
     def __init__(
@@ -65,9 +79,7 @@ class PromptLoader:
         *,
         prompt_name: str,
         fallback_template: str | None = None,
-        ttl_seconds: int = 300,
         client: Client | None = None,
-        now_provider: Callable[[], datetime] | None = None,
     ) -> None:
         self._prompt_name = prompt_name
         if fallback_template is not None:
@@ -80,50 +92,34 @@ class PromptLoader:
                 "Provide fallback_template explicitly or register one in "
                 "_FALLBACK_REGISTRY."
             )
-        self._ttl_seconds = ttl_seconds
         self._client = client or Client()
-        self._now_provider = now_provider or datetime.now
-        self._cache: tuple[str, datetime] | None = None
-
-    def _is_cache_fresh(self) -> bool:
-        """Return ``True`` if the cached template is within TTL."""
-        if self._cache is None:
-            return False
-        _, fetched_at = self._cache
-        elapsed = (self._now_provider() - fetched_at).total_seconds()
-        return elapsed < self._ttl_seconds
+        self._last_template: str | None = None
 
     async def get_template(self) -> str:
         """Return the current template string.
 
-        - If cached value is fresh (within TTL), returns it.
-        - Otherwise, refetches from LangSmith via ``asyncio.to_thread``.
-        - On a refresh failure, logs a warning and keeps serving the cached value.
-        - On a first-fetch failure, logs an error and returns ``fallback_template``.
+        - Calls ``client.pull_prompt`` (which is served from the LangSmith
+          SDK's global in-memory cache when fresh).
+        - On failure, returns the last successfully fetched template if any,
+          otherwise the configured fallback template.
         """
-        if self._is_cache_fresh():
-            assert self._cache is not None
-            return self._cache[0]
-
         try:
             prompt = await asyncio.to_thread(self._client.pull_prompt, self._prompt_name)
-            template_str: str = prompt.template if hasattr(prompt, "template") else str(prompt)
-            self._cache = (template_str, self._now_provider())
+            template_str: str = prompt.template
+            self._last_template = template_str
             return template_str
         except Exception:
-            if self._cache is not None:
+            if self._last_template is not None:
                 log.warning(
-                    "Failed to refresh prompt '%s' from LangSmith; serving cached version",
+                    "Failed to refresh prompt '%s' from LangSmith; serving last successful version",
                     self._prompt_name,
-                    exc_info=True,
+                    # exc_info=True,
                 )
-                assert self._cache is not None
-                return self._cache[0]
+                return self._last_template
             log.error(
                 "Failed to fetch prompt '%s' from LangSmith on first attempt; "
                 "using fallback template",
                 self._prompt_name,
-                exc_info=True,
+                # exc_info=True,
             )
-            self._cache = (self._fallback_template, self._now_provider())
             return self._fallback_template

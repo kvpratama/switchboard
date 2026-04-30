@@ -116,11 +116,7 @@ async def build_agent(
                 log.warning("Failed to fetch timezone from Calendar API; falling back to UTC")
                 timezone = "UTC"
 
-    loader = PromptLoader(
-        prompt_name="switchboard-system",
-        ttl_seconds=300,
-        now_provider=now_provider,
-    )
+    loader = PromptLoader(prompt_name="switchboard-system")
 
     @dynamic_prompt
     async def _system_prompt(request: ModelRequest) -> str:

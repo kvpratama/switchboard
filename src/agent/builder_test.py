@@ -100,6 +100,4 @@ async def test_build_agent_wires_model_and_tools(settings_env, mocker) -> None:
 
     PromptLoader.assert_called_once_with(  # ty: ignore[unresolved-attribute]
         prompt_name="switchboard-system",
-        ttl_seconds=300,
-        now_provider=None,
     )

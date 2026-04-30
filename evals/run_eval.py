@@ -2,12 +2,16 @@
 
 import asyncio
 
+from dotenv import load_dotenv
 from langsmith import aevaluate
 
 from evals.dataset import ensure_dataset
 from evals.evaluators import accuracy_evaluator
 from evals.evaluators_code import response_length_evaluator
 from evals.run_agent import run_agent
+
+# Load environment variables from .env
+load_dotenv()
 
 
 async def _run() -> None:
