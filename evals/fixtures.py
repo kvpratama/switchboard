@@ -59,18 +59,7 @@ FRIDAY_EVENTS = [
 ]
 
 # All events combined for search
-ALL_EVENTS = TODAY_EVENTS + TOMORROW_EVENTS + FRIDAY_EVENTS
-
-
-def get_events_by_date(date_str: str) -> list[dict]:
-    """Get events for a specific date (YYYY-MM-DD format)."""
-    if date_str == "2026-04-29":
-        return TODAY_EVENTS
-    elif date_str == "2026-04-30":
-        return TOMORROW_EVENTS
-    elif date_str == "2026-05-01":
-        return FRIDAY_EVENTS
-    return []
+ALL_EVENTS: list[dict] = TODAY_EVENTS + TOMORROW_EVENTS + FRIDAY_EVENTS
 
 
 def search_events_by_query(query: str) -> list[dict]:

@@ -2,7 +2,7 @@
 
 from unittest.mock import AsyncMock
 
-from evals.fixtures import ALL_EVENTS, get_events_by_date, search_events_by_query
+from evals.fixtures import ALL_EVENTS, search_events_by_query
 
 
 class MockCalendarClient:
@@ -26,9 +26,19 @@ class MockCalendarClient:
         if not time_min:
             return ALL_EVENTS
 
-        # Extract date from ISO timestamp (YYYY-MM-DD)
-        date_str = time_min.split("T")[0]
-        return get_events_by_date(date_str)
+        # Filter events by time range
+        filtered = []
+        for event in ALL_EVENTS:
+            event_start = event["start"].get("dateTime")
+            if not event_start:
+                continue
+
+            # Check if event is within range
+            if event_start >= time_min:
+                if time_max is None or event_start < time_max:
+                    filtered.append(event)
+
+        return filtered
 
     async def _search_events(self, query: str, **kwargs) -> list[dict]:
         """Mock search_events - returns events matching query text."""
