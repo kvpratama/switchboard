@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+from datetime import datetime
 from unittest.mock import MagicMock
+from zoneinfo import ZoneInfo
 
 from langchain_core.language_models.fake_chat_models import FakeListChatModel
 
@@ -17,6 +19,22 @@ def test_render_system_prompt_includes_timezone_and_current_time() -> None:
     assert "calendar" in prompt.lower()
     # Includes some date-like structure
     assert "20" in prompt  # current year prefix
+
+
+def test_render_system_prompt_uses_now_provider_for_reproducibility() -> None:
+    fixed = datetime(2026, 4, 29, 17, 0, 0, tzinfo=ZoneInfo("Asia/Tokyo"))
+
+    prompt = render_system_prompt(timezone="Asia/Tokyo", now_provider=lambda: fixed)
+
+    assert "2026-04-29T17:00:00+09:00" in prompt
+
+
+def test_render_system_prompt_now_provider_naive_datetime_uses_timezone() -> None:
+    naive = datetime(2026, 4, 29, 17, 0, 0)
+
+    prompt = render_system_prompt(timezone="Asia/Tokyo", now_provider=lambda: naive)
+
+    assert "2026-04-29T17:00:00+09:00" in prompt
 
 
 async def test_build_agent_wires_model_and_tools(settings_env, mocker) -> None:

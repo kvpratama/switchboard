@@ -35,26 +35,26 @@ TOMORROW_EVENTS = [
     },
 ]
 
-# Mock events for 2026-05-02 (Friday)
+# Mock events for 2026-05-01 (Friday)
 FRIDAY_EVENTS = [
     {
         "id": "event5",
         "summary": "Client Call",
-        "start": {"dateTime": "2026-05-02T09:00:00+09:00"},
-        "end": {"dateTime": "2026-05-02T10:00:00+09:00"},
+        "start": {"dateTime": "2026-05-01T09:00:00+09:00"},
+        "end": {"dateTime": "2026-05-01T10:00:00+09:00"},
     },
     {
         "id": "event6",
         "summary": "Team Lunch",
-        "start": {"dateTime": "2026-05-02T12:00:00+09:00"},
-        "end": {"dateTime": "2026-05-02T13:00:00+09:00"},
+        "start": {"dateTime": "2026-05-01T12:00:00+09:00"},
+        "end": {"dateTime": "2026-05-01T13:00:00+09:00"},
         "location": "Italian Restaurant",
     },
     {
         "id": "event7",
         "summary": "Code Review",
-        "start": {"dateTime": "2026-05-02T15:00:00+09:00"},
-        "end": {"dateTime": "2026-05-02T16:00:00+09:00"},
+        "start": {"dateTime": "2026-05-01T15:00:00+09:00"},
+        "end": {"dateTime": "2026-05-01T16:00:00+09:00"},
     },
 ]
 
@@ -68,7 +68,7 @@ def get_events_by_date(date_str: str) -> list[dict]:
         return TODAY_EVENTS
     elif date_str == "2026-04-30":
         return TOMORROW_EVENTS
-    elif date_str == "2026-05-02":
+    elif date_str == "2026-05-01":
         return FRIDAY_EVENTS
     return []
 

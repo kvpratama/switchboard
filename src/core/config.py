@@ -37,6 +37,12 @@ class Settings(BaseSettings):
     llm_api_key: SecretStr = Field(...)
     llm_provider_base_url: str | None = None
 
+    # LLM Eval
+    llm_provider_eval: str = Field(...)
+    llm_model_eval: str = Field(...)
+    llm_api_key_eval: SecretStr = Field(...)
+    llm_provider_base_url_eval: str | None = None
+
     # Google Calendar
     google_oauth_client_secrets_path: Path = Field(...)
     google_oauth_token_path: Path = Field(default=Path("./data/token.json"))

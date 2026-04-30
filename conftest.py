@@ -22,6 +22,9 @@ def settings_env(monkeypatch: pytest.MonkeyPatch, tmp_path) -> None:
     monkeypatch.setenv("LLM_PROVIDER", "openai")
     monkeypatch.setenv("LLM_MODEL", "gpt-4o-mini")
     monkeypatch.setenv("LLM_API_KEY", "test-llm-key")
+    monkeypatch.setenv("LLM_PROVIDER_EVAL", "openai")
+    monkeypatch.setenv("LLM_MODEL_EVAL", "gpt-4o-mini")
+    monkeypatch.setenv("LLM_API_KEY_EVAL", "test-llm-key-eval")
     monkeypatch.setenv(
         "GOOGLE_OAUTH_CLIENT_SECRETS_PATH",
         str(tmp_path / "credentials.json"),

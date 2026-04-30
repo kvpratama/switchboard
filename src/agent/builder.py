@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+from collections.abc import Callable
 from datetime import datetime
 from typing import Any
 from zoneinfo import ZoneInfo
@@ -18,7 +19,11 @@ from src.core.config import Settings
 log = logging.getLogger(__name__)
 
 
-def render_system_prompt(*, timezone: str) -> str:
+def render_system_prompt(
+    *,
+    timezone: str,
+    now_provider: Callable[[], datetime] | None = None,
+) -> str:
     """Build the system prompt with the current time + timezone embedded.
 
     Re-rendered per agent invocation (via the dynamic_prompt middleware) so
@@ -26,6 +31,11 @@ def render_system_prompt(*, timezone: str) -> str:
 
     Args:
         timezone: IANA timezone name, e.g. ``Asia/Tokyo``.
+        now_provider: Optional callable returning the current ``datetime``.
+            Used by the eval harness to freeze time for reproducibility.
+            If provided and the returned datetime has no tzinfo, it is
+            interpreted in ``timezone``; otherwise it is converted to it.
+            Defaults to ``datetime.now(tz)``.
 
     Returns:
         The system prompt string.
@@ -37,7 +47,11 @@ def render_system_prompt(*, timezone: str) -> str:
         tz = ZoneInfo("UTC")
         timezone = "UTC"
 
-    now = datetime.now(tz)
+    if now_provider is None:
+        now = datetime.now(tz)
+    else:
+        provided = now_provider()
+        now = provided.astimezone(tz) if provided.tzinfo else provided.replace(tzinfo=tz)
     return (
         "You are Switchboard, a helpful assistant that answers questions "
         "about the user's Google Calendar.\n"
@@ -57,6 +71,7 @@ async def build_agent(
     checkpointer: Any,
     calendar_client: GoogleCalendarClient | None = None,
     timezone: str | None = None,
+    now_provider: Callable[[], datetime] | None = None,
 ) -> Any:
     """Construct the read-only calendar agent.
 
@@ -68,6 +83,8 @@ async def build_agent(
             creates a real GoogleCalendarClient.
         timezone: Optional timezone override (for testing). If None, uses
             settings.default_timezone or fetches from Calendar API.
+        now_provider: Optional callable returning the current ``datetime``.
+            Used by the eval harness to freeze time for reproducibility.
 
     Returns:
         Compiled agent ready to ``ainvoke``.
@@ -103,7 +120,7 @@ async def build_agent(
 
     @dynamic_prompt
     def _system_prompt(request: ModelRequest) -> str:
-        return render_system_prompt(timezone=timezone)
+        return render_system_prompt(timezone=timezone, now_provider=now_provider)
 
     return create_agent(
         model=model,

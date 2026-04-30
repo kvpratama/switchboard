@@ -2,7 +2,7 @@
 
 from unittest.mock import AsyncMock
 
-from eval.fixtures import ALL_EVENTS, get_events_by_date, search_events_by_query
+from evals.fixtures import ALL_EVENTS, get_events_by_date, search_events_by_query
 
 
 class MockCalendarClient:
@@ -14,6 +14,10 @@ class MockCalendarClient:
         self._mock.list_events.side_effect = self._list_events
         self._mock.search_events.side_effect = self._search_events
         self._mock.get_event.side_effect = self._get_event
+        # Defensive default: build_agent may call get_timezone() if no
+        # timezone override is passed. Returning a real string here avoids
+        # AsyncMock surprise objects propagating into the prompt.
+        self._mock.get_timezone.return_value = "Asia/Tokyo"
 
     async def _list_events(
         self, time_min: str | None = None, time_max: str | None = None, **kwargs

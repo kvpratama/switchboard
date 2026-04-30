@@ -5,20 +5,24 @@ Evaluation framework for testing Switchboard agent with mocked calendar data.
 ## Structure
 
 ```
-eval/
+evals/
 ├── fixtures.py          # Mock calendar events organized by date
 ├── mock_calendar.py     # Dynamic mock client (returns different data based on query)
 ├── dataset.json         # 10 evaluation examples
-├── run_agent.py         # Agent runner with mocked calendar
-├── evaluators.py        # Accuracy and conciseness evaluators
+├── run_agent.py         # Agent runner with mocked calendar (frozen clock)
+├── evaluators.py        # LLM-as-judge accuracy evaluator (LOCAL only)
+├── evaluators_code.py   # Sandbox-safe code evaluators (UPLOADABLE)
 └── run_eval.py          # Main evaluation script
 ```
 
 ## Quick Start
 
 ```bash
-# Run evaluation locally
-uv run python eval/run_eval.py
+# Run evaluation locally (registered console script)
+uv run switchboard-eval
+
+# Or run the module directly
+uv run python -m evals.run_eval
 ```
 
 Results will appear in LangSmith under experiment prefix `switchboard-eval`.
@@ -37,11 +41,15 @@ The `MockCalendarClient` returns different events based on query parameters:
 
 All evaluations run with a fixed timestamp: **2026-04-29T17:00:00+09:00**
 
-This ensures:
+This is wired through `build_agent(now_provider=lambda: EVAL_TIME)` in
+`run_agent.py`, which causes the agent's `dynamic_prompt` middleware to embed
+the frozen time into every system prompt instead of `datetime.now()`. As a
+result:
+
 - "today" always resolves to April 29
 - "tomorrow" always resolves to April 30
 - "Friday" always resolves to May 2
-- Results are reproducible
+- Results are reproducible regardless of the wall clock
 
 ### 3. Dataset Coordination
 
@@ -66,17 +74,19 @@ The mock returns TODAY_EVENTS (Team Meeting + Lunch with Alex), and the expected
 ### Upload Dataset
 
 ```bash
-langsmith dataset upload eval/dataset.json \
+langsmith dataset upload evals/dataset.json \
   --name "Switchboard Eval" \
   --api-key $LANGSMITH_API_KEY
 ```
 
 ### Upload Evaluators (Optional)
 
-Code evaluators can be uploaded to auto-run on experiments:
+Sandbox-safe code evaluators live in **`evals/evaluators_code.py`** (stdlib
+imports only, no top-level side effects). They can be uploaded to auto-run
+on experiments:
 
 ```bash
-langsmith evaluator upload eval/evaluators.py \
+langsmith evaluator upload evals/evaluators_code.py \
   --name "Response Length" \
   --function response_length_evaluator \
   --dataset "Switchboard Eval" \
@@ -84,7 +94,9 @@ langsmith evaluator upload eval/evaluators.py \
   --api-key $LANGSMITH_API_KEY
 ```
 
-**Note**: LLM-as-judge evaluators (like `accuracy_evaluator`) cannot be uploaded via CLI yet. Run them locally with `evaluate(evaluators=[...])`.
+**Note**: `evals/evaluators.py` contains the LLM-as-judge `accuracy_evaluator`,
+which imports `langchain` and `Settings`. It CANNOT be uploaded to the LangSmith
+sandbox — run it locally via `evaluate(evaluators=[...])`.
 
 ## Adding New Test Cases
 
