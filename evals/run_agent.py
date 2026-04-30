@@ -16,7 +16,7 @@ load_dotenv()
 # Fixed time for evaluation: 2026-04-29T17:00:00+09:00.
 # All relative dates ("today", "tomorrow", "Friday") resolve against this so
 # eval results are reproducible regardless of the wall clock.
-EVAL_TIME = datetime(2026, 4, 29, 17, 0, 0, tzinfo=ZoneInfo("Asia/Tokyo"))
+EVAL_TIME = datetime(2026, 4, 29, 10, 0, 0, tzinfo=ZoneInfo("Asia/Tokyo"))
 
 # Cache the built agent across invocations so we don't pay agent-construction
 # cost for every example in the dataset.

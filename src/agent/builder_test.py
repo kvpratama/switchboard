@@ -27,6 +27,7 @@ def test_render_system_prompt_uses_now_provider_for_reproducibility() -> None:
     prompt = render_system_prompt(timezone="Asia/Tokyo", now_provider=lambda: fixed)
 
     assert "2026-04-29T17:00:00+09:00" in prompt
+    assert "Wednesday" in prompt
 
 
 def test_render_system_prompt_now_provider_naive_datetime_uses_timezone() -> None:
@@ -35,6 +36,7 @@ def test_render_system_prompt_now_provider_naive_datetime_uses_timezone() -> Non
     prompt = render_system_prompt(timezone="Asia/Tokyo", now_provider=lambda: naive)
 
     assert "2026-04-29T17:00:00+09:00" in prompt
+    assert "Wednesday" in prompt
 
 
 async def test_build_agent_wires_model_and_tools(settings_env, mocker) -> None:

@@ -55,7 +55,7 @@ def render_system_prompt(
     return (
         "You are Switchboard, a helpful assistant that answers questions "
         "about the user's Google Calendar.\n"
-        f"The current local time is {now.isoformat()} ({timezone}).\n"
+        f"The current local time is {now.isoformat()} ({timezone}), {now.strftime('%A')}.\n"
         "When the user mentions relative times (today, tomorrow, this week, "
         "next Monday, etc.), resolve them against the current local time and "
         "always pass ISO 8601 datetimes WITH the user's timezone offset to "
