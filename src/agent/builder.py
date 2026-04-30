@@ -12,6 +12,7 @@ from langchain.agents import create_agent
 from langchain.agents.middleware import ModelRequest, dynamic_prompt
 from langchain.chat_models import init_chat_model
 
+from src.agent.prompt_loader import PromptLoader
 from src.calendar.client import GoogleCalendarClient
 from src.calendar.tools import build_calendar_tools
 from src.core.config import Settings
@@ -21,6 +22,7 @@ log = logging.getLogger(__name__)
 
 def render_system_prompt(
     *,
+    template: str,
     timezone: str,
     now_provider: Callable[[], datetime] | None = None,
 ) -> str:
@@ -30,6 +32,8 @@ def render_system_prompt(
     relative dates (today, tomorrow, next Monday) resolve correctly.
 
     Args:
+        template: Prompt template string with ``{current_time}``,
+            ``{timezone}``, and ``{day_of_week}`` placeholders.
         timezone: IANA timezone name, e.g. ``Asia/Tokyo``.
         now_provider: Optional callable returning the current ``datetime``.
             Used by the eval harness to freeze time for reproducibility.
@@ -52,16 +56,10 @@ def render_system_prompt(
     else:
         provided = now_provider()
         now = provided.astimezone(tz) if provided.tzinfo else provided.replace(tzinfo=tz)
-    return (
-        "You are Switchboard, a helpful assistant that answers questions "
-        "about the user's Google Calendar.\n"
-        f"The current local time is {now.isoformat()} ({timezone}), {now.strftime('%A')}.\n"
-        "When the user mentions relative times (today, tomorrow, this week, "
-        "next Monday, etc.), resolve them against the current local time and "
-        "always pass ISO 8601 datetimes WITH the user's timezone offset to "
-        "your tools.\n"
-        "Be concise. If a tool returns an error, relay a short, friendly "
-        "explanation to the user — do not retry blindly."
+    return template.format(
+        current_time=now.isoformat(),
+        timezone=timezone,
+        day_of_week=now.strftime("%A"),
     )
 
 
@@ -118,9 +116,16 @@ async def build_agent(
                 log.warning("Failed to fetch timezone from Calendar API; falling back to UTC")
                 timezone = "UTC"
 
+    loader = PromptLoader(
+        prompt_name="switchboard-system",
+        ttl_seconds=300,
+        now_provider=now_provider,
+    )
+
     @dynamic_prompt
-    def _system_prompt(request: ModelRequest) -> str:
-        return render_system_prompt(timezone=timezone, now_provider=now_provider)
+    async def _system_prompt(request: ModelRequest) -> str:
+        template = await loader.get_template()
+        return render_system_prompt(template=template, timezone=timezone, now_provider=now_provider)
 
     return create_agent(
         model=model,

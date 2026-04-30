@@ -15,7 +15,13 @@ from typing import Annotated, Any, TypedDict
 
 from langchain.chat_models import init_chat_model
 
+from src.agent.prompt_loader import PromptLoader
 from src.core.config import Settings
+
+_accuracy_loader = PromptLoader(
+    prompt_name="switchboard-accuracy-evaluator",
+    ttl_seconds=300,
+)
 
 
 class AccuracyGrade(TypedDict):
@@ -58,18 +64,16 @@ async def accuracy_evaluator(run, example):
     expected_response = example_outputs.get("response", "")
 
     judge = _get_judge()
+    template = await _accuracy_loader.get_template()
+    content = template.format(
+        expected_response=expected_response,
+        actual_response=actual_response,
+    )
     grade: AccuracyGrade = await judge.ainvoke(
         [
             {
                 "role": "user",
-                "content": (
-                    "Compare the actual response to the expected response. "
-                    "The actual response should convey the same information as "
-                    "expected, but does not need to match word-for-word.\n\n"
-                    f"Expected: {expected_response}\n"
-                    f"Actual: {actual_response}\n\n"
-                    "Is the actual response accurate?"
-                ),
+                "content": content,
             }
         ]
     )
