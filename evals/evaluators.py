@@ -11,12 +11,16 @@ For sandbox-safe code evaluators that can be uploaded, see
 from __future__ import annotations
 
 from functools import lru_cache
-from typing import Annotated, Any, TypedDict
+from typing import TYPE_CHECKING, Annotated, Any, TypedDict, cast
 
 from langchain.chat_models import init_chat_model
 
 from src.agent.prompt_loader import PromptLoader
 from src.core.config import Settings
+
+if TYPE_CHECKING:
+    from langchain_core.runnables import Runnable
+    from langsmith.schemas import Example, Run
 
 
 class AccuracyGrade(TypedDict):
@@ -26,34 +30,63 @@ class AccuracyGrade(TypedDict):
     is_accurate: Annotated[bool, ..., "True if response is accurate"]
 
 
+class EvaluationResult(TypedDict):
+    """Result returned by an evaluator function."""
+
+    score: int
+    comment: str
+
+
+def _extract_outputs(obj: Run | Example | dict[str, Any]) -> dict[str, Any]:
+    """Extract the ``outputs`` mapping from a Run/Example or dict, defaulting to ``{}``."""
+    raw = obj.outputs if hasattr(obj, "outputs") else obj.get("outputs", {})
+    return cast("dict[str, Any]", raw or {})
+
+
 @lru_cache(maxsize=1)
-def _get_judge() -> Any:
+def _get_judge() -> Runnable[Any, AccuracyGrade]:
     """Lazily build the LLM judge so importing this module has no side effects."""
     settings = Settings()
-    return init_chat_model(
-        model=settings.llm_model_eval,
-        model_provider=settings.llm_provider_eval,
-        api_key=settings.llm_api_key_eval.get_secret_value(),
-        base_url=settings.llm_provider_base_url_eval,
-        temperature=0,
-    ).with_structured_output(AccuracyGrade, method="json_schema", strict=True)
+    if (
+        settings.llm_provider_eval is None
+        or settings.llm_model_eval is None
+        or settings.llm_api_key_eval is None
+    ):
+        raise RuntimeError(
+            "Evaluation LLM is not configured. Set LLM_PROVIDER_EVAL, "
+            "LLM_MODEL_EVAL and LLM_API_KEY_EVAL in your environment to run "
+            "the LLM-as-judge evaluator."
+        )
+    return cast(
+        "Runnable[Any, AccuracyGrade]",
+        init_chat_model(
+            model=settings.llm_model_eval,
+            model_provider=settings.llm_provider_eval,
+            api_key=settings.llm_api_key_eval.get_secret_value(),
+            base_url=settings.llm_provider_base_url_eval,
+            temperature=0,
+        ).with_structured_output(AccuracyGrade, method="json_schema", strict=True),
+    )
 
 
-async def accuracy_evaluator(run, example):
+async def accuracy_evaluator(
+    run: Run | dict[str, Any],
+    example: Example | dict[str, Any],
+) -> EvaluationResult:
     """Evaluate if agent response is accurate compared to expected output.
 
     Args:
-        run: Run object with outputs from agent execution.
-        example: Example object with expected outputs from dataset.
+        run: LangSmith ``Run`` (or dict for uploaded evaluators) with
+            ``outputs.response`` from agent execution.
+        example: LangSmith ``Example`` (or dict) with ``outputs.response``
+            from the dataset.
 
     Returns:
-        Dictionary with score (0 or 1) and comment explaining the grade.
+        Dictionary with ``score`` (0 or 1) and ``comment`` explaining the grade.
     """
     # Handle both RunTree (local) and dict (uploaded) formats
-    run_outputs = (run.outputs if hasattr(run, "outputs") else run.get("outputs", {})) or {}
-    example_outputs = (
-        example.outputs if hasattr(example, "outputs") else example.get("outputs", {})
-    ) or {}
+    run_outputs = _extract_outputs(run)
+    example_outputs = _extract_outputs(example)
 
     actual_response = run_outputs.get("response", "")
     expected_response = example_outputs.get("response", "")

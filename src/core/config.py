@@ -37,10 +37,10 @@ class Settings(BaseSettings):
     llm_api_key: SecretStr = Field(...)
     llm_provider_base_url: str | None = None
 
-    # LLM Eval
-    llm_provider_eval: str = Field(...)
-    llm_model_eval: str = Field(...)
-    llm_api_key_eval: SecretStr = Field(...)
+    # LLM Eval — optional; only required when running the evaluation suite.
+    llm_provider_eval: str | None = None
+    llm_model_eval: str | None = None
+    llm_api_key_eval: SecretStr | None = None
     llm_provider_base_url_eval: str | None = None
 
     # Google Calendar

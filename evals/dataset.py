@@ -4,6 +4,7 @@ Syncs evaluation examples to a LangSmith dataset, handling
 creation, updates, and deletions via content-hash diffing.
 """
 
+import asyncio
 import hashlib
 import json
 from pathlib import Path
@@ -15,9 +16,10 @@ DATASET_NAME = "Switchboard Eval"
 DATASET_PATH = Path(__file__).parent / "dataset.json"
 
 
-def _load_examples() -> list[dict[str, Any]]:
+async def _load_examples() -> list[dict[str, Any]]:
     """Load examples from dataset.json."""
-    return json.loads(DATASET_PATH.read_text())
+    text = await asyncio.to_thread(DATASET_PATH.read_text)
+    return json.loads(text)
 
 
 def get_content_hash(inputs: dict[str, Any], outputs: dict[str, Any]) -> str:
@@ -36,7 +38,7 @@ def get_content_hash(inputs: dict[str, Any], outputs: dict[str, Any]) -> str:
     return hashlib.sha256(combined.encode()).hexdigest()
 
 
-def ensure_dataset(client: Client | None = None) -> str:
+async def ensure_dataset(client: Client | None = None) -> str:
     """Create or sync the evaluation dataset in LangSmith.
 
     Creates the dataset with all examples from dataset.json if it does not exist.
@@ -52,18 +54,22 @@ def ensure_dataset(client: Client | None = None) -> str:
     if client is None:
         client = Client()
 
-    examples = _load_examples()
+    examples = await _load_examples()
 
     # 1. Ensure dataset exists
     try:
-        dataset = client.read_dataset(dataset_name=DATASET_NAME)
+        dataset = await asyncio.to_thread(client.read_dataset, dataset_name=DATASET_NAME)
     except Exception:
-        dataset = client.create_dataset(
-            dataset_name=DATASET_NAME, description="Switchboard offline eval set"
+        dataset = await asyncio.to_thread(
+            client.create_dataset,
+            dataset_name=DATASET_NAME,
+            description="Switchboard offline eval set",
         )
 
     # 2. Get existing examples to compare
-    existing_examples = list(client.list_examples(dataset_id=dataset.id))
+    existing_examples = await asyncio.to_thread(
+        lambda: list(client.list_examples(dataset_id=dataset.id))
+    )
     existing_map = {ex.metadata.get("external_id"): ex for ex in existing_examples if ex.metadata}
 
     existed, updated, new_examples, deleted = [], [], [], []
@@ -85,7 +91,8 @@ def ensure_dataset(client: Client | None = None) -> str:
 
             existing_ex = existing_map[external_id]
             if existing_ex.metadata and existing_ex.metadata.get("content_hash") != current_hash:
-                client.update_example(
+                await asyncio.to_thread(
+                    client.update_example,
                     example_id=existing_ex.id,
                     inputs=ex["inputs"],
                     outputs=ex["outputs"],
@@ -96,7 +103,8 @@ def ensure_dataset(client: Client | None = None) -> str:
                 existed.append(ex)
         else:
             # New example - upload it
-            client.create_example(
+            await asyncio.to_thread(
+                client.create_example,
                 dataset_id=dataset.id,
                 inputs=ex["inputs"],
                 outputs=ex["outputs"],
@@ -107,7 +115,7 @@ def ensure_dataset(client: Client | None = None) -> str:
     # 4. Delete remote examples that no longer exist locally
     for external_id, existing_ex in existing_map.items():
         if external_id not in local_external_ids:
-            client.delete_example(example_id=existing_ex.id)
+            await asyncio.to_thread(client.delete_example, example_id=existing_ex.id)
             deleted.append(existing_ex)
 
     print(

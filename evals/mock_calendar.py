@@ -1,5 +1,6 @@
 """Dynamic mock calendar client for evaluation."""
 
+from typing import Any
 from unittest.mock import AsyncMock
 
 from evals.fixtures import ALL_EVENTS, search_events_by_query
@@ -8,8 +9,15 @@ from evals.fixtures import ALL_EVENTS, search_events_by_query
 class MockCalendarClient:
     """Mock calendar client that returns dynamic data based on query parameters."""
 
-    def __init__(self):
-        """Initialize mock client."""
+    def __init__(self, timezone: str = "Asia/Tokyo", **kwargs: Any) -> None:
+        """Initialize mock client.
+
+        Args:
+            timezone: IANA timezone string returned by ``get_timezone``.
+            **kwargs: Additional keyword arguments are accepted and ignored
+                so this mock can stand in for the real calendar client.
+        """
+        self._timezone = timezone
         self._mock = AsyncMock()
         self._mock.list_events.side_effect = self._list_events
         self._mock.search_events.side_effect = self._search_events
@@ -17,7 +25,7 @@ class MockCalendarClient:
         # Defensive default: build_agent may call get_timezone() if no
         # timezone override is passed. Returning a real string here avoids
         # AsyncMock surprise objects propagating into the prompt.
-        self._mock.get_timezone.return_value = "Asia/Tokyo"
+        self._mock.get_timezone.return_value = self._timezone
 
     async def _list_events(
         self, time_min: str | None = None, time_max: str | None = None, **kwargs

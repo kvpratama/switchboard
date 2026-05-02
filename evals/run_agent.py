@@ -13,7 +13,7 @@ from src.core.config import Settings
 # Load environment variables
 load_dotenv()
 
-# Fixed time for evaluation: 2026-04-29T17:00:00+09:00.
+# Fixed time for evaluation: 2026-04-29T10:00:00+09:00.
 # All relative dates ("today", "tomorrow", "Friday") resolve against this so
 # eval results are reproducible regardless of the wall clock.
 EVAL_TIME = datetime(2026, 4, 29, 10, 0, 0, tzinfo=ZoneInfo("Asia/Tokyo"))
@@ -61,9 +61,5 @@ async def run_agent(inputs: dict) -> dict:
         )
     else:
         response = "No response"
-
-    import time
-
-    time.sleep(10)
 
     return {"response": response}

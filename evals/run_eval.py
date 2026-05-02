@@ -1,6 +1,7 @@
 """Run evaluation on Switchboard agent with mocked calendar data."""
 
 import asyncio
+from typing import Any, cast
 
 from dotenv import load_dotenv
 from langsmith import aevaluate
@@ -16,7 +17,7 @@ load_dotenv()
 
 async def _run() -> None:
     print("Starting Switchboard evaluation...")
-    dataset_name = ensure_dataset()
+    dataset_name = await ensure_dataset()
     print(f"Dataset: {dataset_name}")
     print("Evaluators: accuracy_evaluator, response_length_evaluator")
     print("-" * 60)
@@ -24,7 +25,12 @@ async def _run() -> None:
     results = await aevaluate(
         run_agent,
         data=dataset_name,
-        evaluators=[accuracy_evaluator, response_length_evaluator],
+        # Cast away the strict langsmith evaluator protocol: our local
+        # `EvaluationResult` TypedDicts are structurally compatible at runtime.
+        evaluators=cast(
+            "list[Any]",
+            [accuracy_evaluator, response_length_evaluator],
+        ),
         experiment_prefix="switchboard-eval",
         max_concurrency=3,
     )

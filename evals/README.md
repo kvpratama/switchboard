@@ -4,7 +4,7 @@ Evaluation framework for testing Switchboard agent with mocked calendar data.
 
 ## Structure
 
-```
+```text
 evals/
 ├── fixtures.py          # Mock calendar events organized by date
 ├── mock_calendar.py     # Dynamic mock client (returns different data based on query)
@@ -48,7 +48,7 @@ result:
 
 - "today" always resolves to April 29
 - "tomorrow" always resolves to April 30
-- "Friday" always resolves to May 2
+- "Friday" resolves to May 1, 2026
 - Results are reproducible regardless of the wall clock
 
 ### 3. Dataset Coordination

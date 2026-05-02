@@ -8,7 +8,10 @@ from evals.mock_calendar import MockCalendarClient
 async def test_list_events_returns_today_events_for_today_date() -> None:
     client = MockCalendarClient().get_mock()
 
-    events = await client.list_events(time_min="2026-04-29T00:00:00+09:00")
+    events = await client.list_events(
+        time_min="2026-04-29T00:00:00+09:00",
+        time_max="2026-04-29T23:59:59+09:00",
+    )
 
     assert len(events) == 2
     assert {e["summary"] for e in events} == {"Team Meeting", "Lunch with Alex"}
@@ -17,7 +20,10 @@ async def test_list_events_returns_today_events_for_today_date() -> None:
 async def test_list_events_returns_friday_events_for_friday_date() -> None:
     client = MockCalendarClient().get_mock()
 
-    events = await client.list_events(time_min="2026-05-02T00:00:00+09:00")
+    events = await client.list_events(
+        time_min="2026-05-01T00:00:00+09:00",
+        time_max="2026-05-01T23:59:59+09:00",
+    )
 
     assert len(events) == 3
 

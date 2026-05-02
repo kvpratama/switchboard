@@ -19,7 +19,7 @@ def test_response_length_evaluator_concise_scores_one() -> None:
 
 
 def test_response_length_evaluator_verbose_scores_zero() -> None:
-    long_response = "x" * 201
+    long_response = "x" * 301
     run = SimpleNamespace(outputs={"response": long_response})
     example = SimpleNamespace(outputs={})
 
