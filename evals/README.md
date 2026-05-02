@@ -67,7 +67,7 @@ The mock returns TODAY_EVENTS (Team Meeting + Lunch with Alex), and the expected
 ### 4. Evaluators
 
 - **accuracy_evaluator**: LLM-as-judge checks if response conveys correct information
-- **response_length_evaluator**: Checks if response is concise (<= 200 chars)
+- **response_length_evaluator**: Checks if response is concise (<= 300 chars)
 
 ## Uploading to LangSmith
 

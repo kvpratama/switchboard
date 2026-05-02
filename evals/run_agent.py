@@ -4,14 +4,9 @@ from datetime import datetime
 from typing import Any
 from zoneinfo import ZoneInfo
 
-from dotenv import load_dotenv
-
 from evals.mock_calendar import MockCalendarClient
 from src.agent.builder import build_agent
 from src.core.config import Settings
-
-# Load environment variables
-load_dotenv()
 
 # Fixed time for evaluation: 2026-04-29T10:00:00+09:00.
 # All relative dates ("today", "tomorrow", "Friday") resolve against this so
