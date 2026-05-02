@@ -47,7 +47,9 @@ cp .env.example .env
 
 1. Go to https://console.cloud.google.com/ → create a project.
 2. APIs & Services → Library → enable **Google Calendar API**.
-3. APIs & Services → **OAuth consent screen** → External → fill in app name/email → **add yourself as a Test user**.
+3. APIs & Services → **OAuth consent screen** → External → fill in app name/email → scroll down to **Test users** → **+ ADD USERS** → enter the Gmail address you'll sign in with → **SAVE**.
+
+   > ⚠️ Wait ~30 seconds after saving, then sign in with the **exact same Gmail address** you added. Using a different account causes a 403 `access_denied` error.
 4. APIs & Services → Credentials → Create Credentials → **OAuth client ID** →
    choose **Desktop app**.
 5. Download the JSON file. Save it where `GOOGLE_OAUTH_CLIENT_SECRETS_PATH`
@@ -59,8 +61,7 @@ cp .env.example .env
 uv run python -m src.auth.bootstrap
 ```
 
-A browser opens. Sign in to your Google account and grant **read-only**
-calendar access. The token is saved to `data/token.json`.
+A browser opens. Sign in with the Gmail address you added as a test user. You'll see a **"Google hasn't verified this app"** warning — click **Advanced → Go to Switchboard (unsafe) → Continue** and grant read-only calendar access. The token is saved to `data/token.json`.
 
 **Headless server?** Run the bootstrap on your laptop, then copy
 `data/token.json` to the same path on the server. Alternatively, SSH-tunnel

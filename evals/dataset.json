@@ -1,0 +1,82 @@
+[
+  {
+    "inputs": {
+      "query": "What's on my calendar today?"
+    },
+    "outputs": {
+      "response": "You have 2 events today: Team Meeting at 10:00 AM in Conference Room A, and Lunch with Alex at 12:30 PM at Cafe Downtown."
+    }
+  },
+  {
+    "inputs": {
+      "query": "Do I have anything tomorrow?"
+    },
+    "outputs": {
+      "response": "Yes, you have 2 events tomorrow: Project Review at 2:00 PM on Zoom, and 1-on-1 with Sarah at 4:00 PM."
+    }
+  },
+  {
+    "inputs": {
+      "query": "What's happening Friday afternoon?"
+    },
+    "outputs": {
+      "response": "On Friday afternoon, you have Code Review at 3:00 PM."
+    }
+  },
+  {
+    "inputs": {
+      "query": "When is my next meeting with Alex?"
+    },
+    "outputs": {
+      "response": "Your next meeting with Alex is Lunch with Alex on April 29 at 12:30 PM at Cafe Downtown."
+    }
+  },
+  {
+    "inputs": {
+      "query": "Find my client call"
+    },
+    "outputs": {
+      "response": "I found Client Call on May 1 at 9:00 AM."
+    }
+  },
+  {
+    "inputs": {
+      "query": "Where is the team meeting?"
+    },
+    "outputs": {
+      "response": "The Team Meeting is in Conference Room A."
+    }
+  },
+  {
+    "inputs": {
+      "query": "Do I have any events on Friday?"
+    },
+    "outputs": {
+      "response": "Yes, you have 3 events on Friday: Client Call at 9:00 AM, Team Lunch at 12:00 PM at Italian Restaurant, and Code Review at 3:00 PM."
+    }
+  },
+  {
+    "inputs": {
+      "query": "What time is the project review?"
+    },
+    "outputs": {
+      "response": "The Project Review is at 2:00 PM on April 30."
+    }
+  },
+  {
+    "inputs": {
+      "query": "Show me tomorrow afternoon"
+    },
+    "outputs": {
+      "response": "Tomorrow afternoon you have: Project Review at 2:00 PM on Zoom, and 1-on-1 with Sarah at 4:00 PM."
+    }
+  },
+  {
+    "inputs": {
+      "query": "Any lunch plans?"
+    },
+    "outputs": {
+      "response": "Yes, you have Lunch with Alex today at 12:30 PM at Cafe Downtown, and Team Lunch on Friday at 12:00 PM at Italian Restaurant."
+    }
+  }
+]
