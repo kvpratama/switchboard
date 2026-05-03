@@ -124,6 +124,62 @@ async def test_get_timezone_returns_utc_on_missing_value(
     assert tz == "UTC"
 
 
+async def test_create_event_inserts_and_returns_compact_payload(
+    tmp_path, fake_service: MagicMock, fake_credentials: MagicMock
+) -> None:
+    fake_service.events.return_value.insert.return_value.execute.return_value = {
+        "id": "evt-new",
+        "summary": "Lunch with Sarah",
+        "start": {"dateTime": "2026-05-03T13:00:00+09:00"},
+        "end": {"dateTime": "2026-05-03T14:00:00+09:00"},
+        "location": "Cafe",
+    }
+    client = GoogleCalendarClient(token_path=tmp_path / "token.json")
+
+    event = await client.create_event(
+        summary="Lunch with Sarah",
+        start="2026-05-03T13:00:00+09:00",
+        end="2026-05-03T14:00:00+09:00",
+        location="Cafe",
+    )
+
+    assert event == {
+        "id": "evt-new",
+        "summary": "Lunch with Sarah",
+        "start": "2026-05-03T13:00:00+09:00",
+        "end": "2026-05-03T14:00:00+09:00",
+        "location": "Cafe",
+    }
+
+    insert = fake_service.events.return_value.insert
+    insert.assert_called_once()
+    kwargs = insert.call_args.kwargs
+    assert kwargs["calendarId"] == "primary"
+    body = kwargs["body"]
+    assert body["summary"] == "Lunch with Sarah"
+    assert body["start"] == {"dateTime": "2026-05-03T13:00:00+09:00"}
+    assert body["end"] == {"dateTime": "2026-05-03T14:00:00+09:00"}
+    assert body["location"] == "Cafe"
+    assert "description" not in body  # Optional fields omitted when None
+
+
+async def test_create_event_wraps_http_error(
+    tmp_path, fake_service: MagicMock, fake_credentials: MagicMock
+) -> None:
+    response = MagicMock(status=403, reason="Forbidden")
+    fake_service.events.return_value.insert.return_value.execute.side_effect = HttpError(
+        resp=response, content=b'{"error":"insufficientPermissions"}'
+    )
+    client = GoogleCalendarClient(token_path=tmp_path / "token.json")
+
+    with pytest.raises(CalendarClientError):
+        await client.create_event(
+            summary="Lunch",
+            start="2026-05-03T13:00:00+09:00",
+            end="2026-05-03T14:00:00+09:00",
+        )
+
+
 async def test_http_error_is_wrapped(
     tmp_path, fake_service: MagicMock, fake_credentials: MagicMock
 ) -> None:

@@ -80,8 +80,80 @@ async def test_tool_returns_error_string_on_client_failure() -> None:
     assert "boom" in result
 
 
-def test_build_calendar_tools_returns_three_tools() -> None:
+def test_build_calendar_tools_returns_four_tools() -> None:
     client = AsyncMock()
     tools = build_calendar_tools(client)
     names = sorted(t.name for t in tools)
-    assert names == ["get_event", "list_events", "search_events"]
+    assert names == ["create_event", "get_event", "list_events", "search_events"]
+
+
+async def test_create_event_tool_returns_json_string() -> None:
+    client = AsyncMock()
+    client.create_event.return_value = {
+        "id": "evt-new",
+        "summary": "Lunch",
+        "start": "2026-05-03T13:00:00+09:00",
+        "end": "2026-05-03T14:00:00+09:00",
+    }
+    tools = build_calendar_tools(client)
+    create_event = next(t for t in tools if t.name == "create_event")
+
+    result = await create_event.ainvoke(
+        {
+            "summary": "Lunch",
+            "start": "2026-05-03T13:00:00+09:00",
+            "end": "2026-05-03T14:00:00+09:00",
+        }
+    )
+
+    assert json.loads(result)["id"] == "evt-new"
+    client.create_event.assert_awaited_once_with(
+        summary="Lunch",
+        start="2026-05-03T13:00:00+09:00",
+        end="2026-05-03T14:00:00+09:00",
+        description=None,
+        location=None,
+    )
+
+
+async def test_create_event_tool_passes_optional_fields() -> None:
+    client = AsyncMock()
+    client.create_event.return_value = {"id": "evt-new"}
+    tools = build_calendar_tools(client)
+    create_event = next(t for t in tools if t.name == "create_event")
+
+    await create_event.ainvoke(
+        {
+            "summary": "Lunch",
+            "start": "2026-05-03T13:00:00+09:00",
+            "end": "2026-05-03T14:00:00+09:00",
+            "description": "with Sarah",
+            "location": "Cafe",
+        }
+    )
+
+    client.create_event.assert_awaited_once_with(
+        summary="Lunch",
+        start="2026-05-03T13:00:00+09:00",
+        end="2026-05-03T14:00:00+09:00",
+        description="with Sarah",
+        location="Cafe",
+    )
+
+
+async def test_create_event_tool_returns_error_string_on_failure() -> None:
+    client = AsyncMock()
+    client.create_event.side_effect = CalendarClientError("boom")
+    tools = build_calendar_tools(client)
+    create_event = next(t for t in tools if t.name == "create_event")
+
+    result = await create_event.ainvoke(
+        {
+            "summary": "Lunch",
+            "start": "2026-05-03T13:00:00+09:00",
+            "end": "2026-05-03T14:00:00+09:00",
+        }
+    )
+
+    assert "Error:" in result
+    assert "boom" in result

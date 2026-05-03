@@ -8,10 +8,14 @@ from unittest.mock import MagicMock
 import pytest
 
 from src.auth.google_oauth import (
-    READONLY_SCOPES,
+    EVENTS_SCOPES,
     GoogleAuthError,
     load_credentials,
 )
+
+
+def test_events_scopes_grant_read_and_write() -> None:
+    assert EVENTS_SCOPES == ["https://www.googleapis.com/auth/calendar.events"]
 
 
 def test_load_credentials_reads_token_file(tmp_path: Path, mocker) -> None:
@@ -27,7 +31,7 @@ def test_load_credentials_reads_token_file(tmp_path: Path, mocker) -> None:
     creds = load_credentials(token_path)
 
     assert creds is fake_creds
-    from_file.assert_called_once_with(str(token_path), READONLY_SCOPES)
+    from_file.assert_called_once_with(str(token_path), EVENTS_SCOPES)
 
 
 def test_load_credentials_refreshes_when_expired(tmp_path: Path, mocker) -> None:

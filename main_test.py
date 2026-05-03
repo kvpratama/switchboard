@@ -27,7 +27,6 @@ async def test_run_async_assembles_app_and_starts_polling(settings_env, mocker, 
     fake_app = MagicMock(name="application")
     fake_app.__aenter__ = AsyncMock(return_value=fake_app)
     fake_app.__aexit__ = AsyncMock(return_value=False)
-    fake_app.initialize = AsyncMock()
     fake_app.start = AsyncMock()
     fake_app.stop = AsyncMock()
     fake_app.updater.start_polling = AsyncMock()
@@ -48,11 +47,12 @@ async def test_run_async_assembles_app_and_starts_polling(settings_env, mocker, 
     assert build_agent.call_args.kwargs["checkpointer"] is fake_checkpointer
     build_application.assert_called_once()
     assert build_application.call_args.kwargs["agent"] is fake_agent
-    fake_app.initialize.assert_awaited_once()
+    fake_app.__aenter__.assert_awaited_once()
     fake_app.start.assert_awaited_once()
     fake_app.updater.start_polling.assert_awaited_once()
     fake_app.updater.stop.assert_awaited_once()
     fake_app.stop.assert_awaited_once()
+    fake_app.__aexit__.assert_awaited_once()
 
 
 class _AsyncContextManager:
@@ -64,3 +64,38 @@ class _AsyncContextManager:
 
     async def __aexit__(self, *exc) -> bool:
         return False
+
+
+def test_warn_if_token_lacks_events_scope(tmp_path, caplog) -> None:
+    from main import _warn_if_insufficient_scope
+
+    token_path = tmp_path / "token.json"
+    token_path.write_text('{"scopes": ["https://www.googleapis.com/auth/calendar.readonly"]}')
+
+    with caplog.at_level("WARNING"):
+        _warn_if_insufficient_scope(token_path)
+
+    assert any("calendar.events" in r.message for r in caplog.records)
+
+
+def test_no_warning_when_events_scope_present(tmp_path, caplog) -> None:
+    from main import _warn_if_insufficient_scope
+
+    token_path = tmp_path / "token.json"
+    token_path.write_text('{"scopes": ["https://www.googleapis.com/auth/calendar.events"]}')
+
+    with caplog.at_level("WARNING"):
+        _warn_if_insufficient_scope(token_path)
+
+    assert not any("calendar.events" in r.message for r in caplog.records)
+
+
+def test_no_warning_when_token_missing(tmp_path, caplog) -> None:
+    from main import _warn_if_insufficient_scope
+
+    missing = tmp_path / "no-token.json"
+
+    with caplog.at_level("WARNING"):
+        _warn_if_insufficient_scope(missing)
+
+    assert not caplog.records
