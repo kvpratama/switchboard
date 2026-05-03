@@ -48,7 +48,7 @@ def build_calendar_tools(client: GoogleCalendarClient) -> list[BaseTool]:
                 max_results=max_results,
             )
         except CalendarClientError:
-            return "Unable to retrieve events. Please check your calendar permissions."
+            return "Unable to retrieve events right now. Please try again later."
         return json.dumps(events)
 
     @tool("search_events")
@@ -77,7 +77,7 @@ def build_calendar_tools(client: GoogleCalendarClient) -> list[BaseTool]:
                 max_results=max_results,
             )
         except CalendarClientError:
-            return "Unable to search events. Please check your calendar permissions."
+            return "Unable to search events right now. Please try again later."
         return json.dumps(events)
 
     @tool("get_event")
@@ -93,7 +93,7 @@ def build_calendar_tools(client: GoogleCalendarClient) -> list[BaseTool]:
         try:
             event: dict[str, Any] = await client.get_event(event_id)
         except CalendarClientError:
-            return "Unable to retrieve event. Please check your calendar permissions."
+            return "Unable to retrieve event right now. Please try again later."
         return json.dumps(event)
 
     @tool("create_event")
@@ -128,7 +128,7 @@ def build_calendar_tools(client: GoogleCalendarClient) -> list[BaseTool]:
                 location=location,
             )
         except CalendarClientError:
-            return "Unable to create event. Please check your calendar permissions."
+            return "Unable to create event right now. Please try again later."
         return json.dumps(event)
 
     return [list_events, search_events, get_event, create_event]

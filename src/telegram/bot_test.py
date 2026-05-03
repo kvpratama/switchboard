@@ -84,6 +84,7 @@ async def test_handle_message_skips_trim_when_under_max() -> None:
 
 
 async def test_handle_message_sends_agent_reply_to_chat() -> None:
+    """Test that agent responses are sent back to the Telegram chat."""
     agent = MagicMock()
 
     # Mock state for trimming check
@@ -120,6 +121,7 @@ async def test_handle_message_sends_agent_reply_to_chat() -> None:
 
 
 async def test_handle_message_apologizes_on_agent_exception() -> None:
+    """Test that errors during agent invocation result in an apology message."""
     agent = MagicMock()
 
     # Mock state for trimming check
@@ -149,6 +151,7 @@ async def test_handle_message_apologizes_on_agent_exception() -> None:
 
 
 async def test_handle_message_skips_when_no_text() -> None:
+    """Test that messages without text content are ignored."""
     agent = MagicMock()
     agent.ainvoke = AsyncMock()
 
@@ -164,6 +167,7 @@ async def test_handle_message_skips_when_no_text() -> None:
 
 
 async def test_handle_message_posts_approval_prompt_when_agent_interrupts() -> None:
+    """Test that agent interrupts trigger an approval prompt with inline buttons."""
     agent = MagicMock()
 
     state_mock = MagicMock()
@@ -211,6 +215,7 @@ async def test_handle_message_posts_approval_prompt_when_agent_interrupts() -> N
 
 
 async def test_handle_message_resumes_with_reject_feedback_when_pending_interrupt() -> None:
+    """Test that free-text messages during a pending interrupt resume with reject + feedback."""
     from langgraph.types import Command
 
     agent = MagicMock()
@@ -268,6 +273,7 @@ async def test_handle_message_resumes_with_reject_feedback_when_pending_interrup
 
 
 async def test_handle_callback_approve_resumes_agent_with_approve_decision() -> None:
+    """Test that the approve button resumes the agent with an approve decision."""
     from langgraph.types import Command
 
     from src.telegram.approval import APPROVE_CALLBACK
@@ -302,6 +308,7 @@ async def test_handle_callback_approve_resumes_agent_with_approve_decision() -> 
 
 
 async def test_handle_callback_reject_resumes_with_reject_and_cancellation() -> None:
+    """Test that the reject button resumes the agent with a reject decision."""
     from langgraph.types import Command
 
     from src.telegram.approval import REJECT_CALLBACK
@@ -336,6 +343,7 @@ async def test_handle_callback_reject_resumes_with_reject_and_cancellation() -> 
 
 
 async def test_handle_callback_edit_posts_hint_without_resuming() -> None:
+    """Test that the edit button posts a hint without resuming the agent."""
     from src.telegram.approval import EDIT_CALLBACK, EDIT_HINT
     from src.telegram.bot import handle_callback
 
@@ -365,6 +373,7 @@ async def test_handle_callback_edit_posts_hint_without_resuming() -> None:
 
 
 def test_build_application_registers_message_and_callback_handlers(settings_env, mocker) -> None:
+    """Test that build_application registers message and callback handlers."""
     from telegram.ext import CallbackQueryHandler, MessageHandler
 
     app_mock = MagicMock(name="application")
@@ -390,6 +399,7 @@ def test_build_application_registers_message_and_callback_handlers(settings_env,
 
 
 async def test_handle_callback_rejects_unauthorized_user() -> None:
+    """Test that callbacks from unauthorized users are rejected without invoking the agent."""
     from src.telegram.approval import APPROVE_CALLBACK
     from src.telegram.bot import handle_callback
 
