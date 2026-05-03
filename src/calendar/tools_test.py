@@ -10,6 +10,11 @@ from src.calendar.tools import build_calendar_tools
 
 
 async def test_list_events_tool_returns_json_string() -> None:
+    """Verify list_events tool returns JSON-serialized event list.
+
+    Returns:
+        None
+    """
     client = AsyncMock()
     client.list_events.return_value = [{"id": "1", "summary": "X"}]
     tools = build_calendar_tools(client)
@@ -31,6 +36,11 @@ async def test_list_events_tool_returns_json_string() -> None:
 
 
 async def test_search_events_tool_passes_query() -> None:
+    """Verify search_events tool passes query and time bounds to client.
+
+    Returns:
+        None
+    """
     client = AsyncMock()
     client.search_events.return_value = []
     tools = build_calendar_tools(client)
@@ -53,6 +63,11 @@ async def test_search_events_tool_passes_query() -> None:
 
 
 async def test_get_event_tool_returns_json_string() -> None:
+    """Verify get_event tool returns JSON-serialized event details.
+
+    Returns:
+        None
+    """
     client = AsyncMock()
     client.get_event.return_value = {"id": "evt-1", "summary": "X"}
     tools = build_calendar_tools(client)
@@ -64,6 +79,11 @@ async def test_get_event_tool_returns_json_string() -> None:
 
 
 async def test_tool_returns_error_string_on_client_failure() -> None:
+    """Verify tool returns user-friendly error message on client failure.
+
+    Returns:
+        None
+    """
     client = AsyncMock()
     client.list_events.side_effect = CalendarClientError("boom")
     tools = build_calendar_tools(client)
@@ -76,12 +96,102 @@ async def test_tool_returns_error_string_on_client_failure() -> None:
         }
     )
 
-    assert "Error:" in result
-    assert "boom" in result
+    assert result == "Unable to retrieve events right now. Please try again later."
 
 
-def test_build_calendar_tools_returns_three_tools() -> None:
+def test_build_calendar_tools_returns_four_tools() -> None:
+    """Verify build_calendar_tools returns all four expected tools.
+
+    Returns:
+        None
+    """
     client = AsyncMock()
     tools = build_calendar_tools(client)
     names = sorted(t.name for t in tools)
-    assert names == ["get_event", "list_events", "search_events"]
+    assert names == ["create_event", "get_event", "list_events", "search_events"]
+
+
+async def test_create_event_tool_returns_json_string() -> None:
+    """Verify create_event tool returns JSON-serialized created event.
+
+    Returns:
+        None
+    """
+    client = AsyncMock()
+    client.create_event.return_value = {
+        "id": "evt-new",
+        "summary": "Lunch",
+        "start": "2026-05-03T13:00:00+09:00",
+        "end": "2026-05-03T14:00:00+09:00",
+    }
+    tools = build_calendar_tools(client)
+    create_event = next(t for t in tools if t.name == "create_event")
+
+    result = await create_event.ainvoke(
+        {
+            "summary": "Lunch",
+            "start": "2026-05-03T13:00:00+09:00",
+            "end": "2026-05-03T14:00:00+09:00",
+        }
+    )
+
+    assert json.loads(result)["id"] == "evt-new"
+    client.create_event.assert_awaited_once_with(
+        summary="Lunch",
+        start="2026-05-03T13:00:00+09:00",
+        end="2026-05-03T14:00:00+09:00",
+        description=None,
+        location=None,
+    )
+
+
+async def test_create_event_tool_passes_optional_fields() -> None:
+    """Verify create_event tool passes optional description and location fields.
+
+    Returns:
+        None
+    """
+    client = AsyncMock()
+    client.create_event.return_value = {"id": "evt-new"}
+    tools = build_calendar_tools(client)
+    create_event = next(t for t in tools if t.name == "create_event")
+
+    await create_event.ainvoke(
+        {
+            "summary": "Lunch",
+            "start": "2026-05-03T13:00:00+09:00",
+            "end": "2026-05-03T14:00:00+09:00",
+            "description": "with Sarah",
+            "location": "Cafe",
+        }
+    )
+
+    client.create_event.assert_awaited_once_with(
+        summary="Lunch",
+        start="2026-05-03T13:00:00+09:00",
+        end="2026-05-03T14:00:00+09:00",
+        description="with Sarah",
+        location="Cafe",
+    )
+
+
+async def test_create_event_tool_returns_error_string_on_failure() -> None:
+    """Verify create_event tool returns user-friendly error message on failure.
+
+    Returns:
+        None
+    """
+    client = AsyncMock()
+    client.create_event.side_effect = CalendarClientError("boom")
+    tools = build_calendar_tools(client)
+    create_event = next(t for t in tools if t.name == "create_event")
+
+    result = await create_event.ainvoke(
+        {
+            "summary": "Lunch",
+            "start": "2026-05-03T13:00:00+09:00",
+            "end": "2026-05-03T14:00:00+09:00",
+        }
+    )
+
+    assert result == "Unable to create event right now. Please try again later."

@@ -11,7 +11,10 @@ from pathlib import Path
 from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
 
-READONLY_SCOPES: list[str] = ["https://www.googleapis.com/auth/calendar.readonly"]
+EVENTS_SCOPES: list[str] = [
+    "https://www.googleapis.com/auth/calendar.events",
+    "https://www.googleapis.com/auth/calendar.settings.readonly",
+]
 
 
 class GoogleAuthError(RuntimeError):
@@ -37,7 +40,7 @@ def load_credentials(token_path: Path) -> Credentials:
         )
 
     try:
-        creds = Credentials.from_authorized_user_file(str(token_path), READONLY_SCOPES)
+        creds = Credentials.from_authorized_user_file(str(token_path), EVENTS_SCOPES)
     except Exception as e:
         raise GoogleAuthError(
             f"Failed to load Google credentials from {token_path}: {e}. "

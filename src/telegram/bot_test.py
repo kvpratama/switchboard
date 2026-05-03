@@ -21,6 +21,7 @@ async def test_handle_message_trims_conversation_when_exceeds_max() -> None:
 
     state_mock = MagicMock()
     state_mock.values = {"messages": old_messages}
+    state_mock.tasks = ()  # No pending interrupt
     agent.aget_state = AsyncMock(return_value=state_mock)
     agent.aupdate_state = AsyncMock()
     agent.ainvoke = AsyncMock(return_value={"messages": [AIMessage(content="Response")]})
@@ -60,6 +61,7 @@ async def test_handle_message_skips_trim_when_under_max() -> None:
 
     state_mock = MagicMock()
     state_mock.values = {"messages": short_messages}
+    state_mock.tasks = ()
     agent.aget_state = AsyncMock(return_value=state_mock)
     agent.aupdate_state = AsyncMock()
     agent.ainvoke = AsyncMock(return_value={"messages": [AIMessage(content="Response")]})
@@ -82,11 +84,13 @@ async def test_handle_message_skips_trim_when_under_max() -> None:
 
 
 async def test_handle_message_sends_agent_reply_to_chat() -> None:
+    """Test that agent responses are sent back to the Telegram chat."""
     agent = MagicMock()
 
     # Mock state for trimming check
     state_mock = MagicMock()
     state_mock.values = {"messages": []}  # Empty, no trimming needed
+    state_mock.tasks = ()
     agent.aget_state = AsyncMock(return_value=state_mock)
 
     agent.ainvoke = AsyncMock(
@@ -117,11 +121,13 @@ async def test_handle_message_sends_agent_reply_to_chat() -> None:
 
 
 async def test_handle_message_apologizes_on_agent_exception() -> None:
+    """Test that errors during agent invocation result in an apology message."""
     agent = MagicMock()
 
     # Mock state for trimming check
     state_mock = MagicMock()
     state_mock.values = {"messages": []}
+    state_mock.tasks = ()
     agent.aget_state = AsyncMock(return_value=state_mock)
 
     agent.ainvoke = AsyncMock(side_effect=RuntimeError("LLM down"))
@@ -145,6 +151,7 @@ async def test_handle_message_apologizes_on_agent_exception() -> None:
 
 
 async def test_handle_message_skips_when_no_text() -> None:
+    """Test that messages without text content are ignored."""
     agent = MagicMock()
     agent.ainvoke = AsyncMock()
 
@@ -159,7 +166,216 @@ async def test_handle_message_skips_when_no_text() -> None:
     agent.ainvoke.assert_not_awaited()
 
 
-def test_build_application_registers_filtered_handler(settings_env, mocker) -> None:
+async def test_handle_message_posts_approval_prompt_when_agent_interrupts() -> None:
+    """Test that agent interrupts trigger an approval prompt with inline buttons."""
+    agent = MagicMock()
+
+    state_mock = MagicMock()
+    state_mock.values = {"messages": []}
+    state_mock.tasks = ()  # No pending interrupt before this turn
+    agent.aget_state = AsyncMock(return_value=state_mock)
+
+    interrupt_payload = [
+        {
+            "value": [
+                {
+                    "action_request": {
+                        "action": "create_event",
+                        "args": {
+                            "summary": "Lunch",
+                            "start": "2026-05-03T13:00:00+09:00",
+                            "end": "2026-05-03T14:00:00+09:00",
+                        },
+                    }
+                }
+            ]
+        }
+    ]
+    agent.ainvoke = AsyncMock(return_value={"messages": [], "__interrupt__": interrupt_payload})
+
+    update = MagicMock()
+    update.effective_chat.id = 12345
+    update.message.text = "schedule lunch tomorrow 1pm"
+    update.message.reply_text = AsyncMock()
+
+    settings_mock = MagicMock()
+    settings_mock.max_conversation_messages = 50
+
+    context = MagicMock()
+    context.bot_data = {"agent": agent, "settings": settings_mock}
+
+    await handle_message(update, context)
+
+    update.message.reply_text.assert_awaited_once()
+    call_args = update.message.reply_text.call_args
+    text = call_args.args[0]
+    assert "Create this event?" in text
+    assert "Lunch" in text
+    assert call_args.kwargs.get("reply_markup") is not None
+
+
+async def test_handle_message_resumes_with_reject_feedback_when_pending_interrupt() -> None:
+    """Test that free-text messages during a pending interrupt resume with reject + feedback."""
+    from langgraph.types import Command
+
+    agent = MagicMock()
+
+    state_mock = MagicMock()
+    state_mock.values = {"messages": [], "__interrupt__": [{"value": "..."}]}
+    state_mock.tasks = (MagicMock(),)
+    agent.aget_state = AsyncMock(return_value=state_mock)
+
+    agent.ainvoke = AsyncMock(
+        return_value={
+            "messages": [],
+            "__interrupt__": [
+                {
+                    "value": [
+                        {
+                            "action_request": {
+                                "action": "create_event",
+                                "args": {
+                                    "summary": "Lunch",
+                                    "start": "2026-05-03T14:00:00+09:00",
+                                    "end": "2026-05-03T15:00:00+09:00",
+                                },
+                            }
+                        }
+                    ]
+                }
+            ],
+        }
+    )
+
+    update = MagicMock()
+    update.effective_chat.id = 12345
+    update.message.text = "make it 2pm"
+    update.message.reply_text = AsyncMock()
+
+    settings_mock = MagicMock()
+    settings_mock.max_conversation_messages = 50
+
+    context = MagicMock()
+    context.bot_data = {"agent": agent, "settings": settings_mock}
+
+    await handle_message(update, context)
+
+    agent.ainvoke.assert_awaited_once()
+    sent_input = agent.ainvoke.call_args.args[0]
+    assert isinstance(sent_input, Command)
+    decisions = sent_input.resume["decisions"]
+    assert decisions[0]["type"] == "reject"
+    assert decisions[0]["feedback"] == "make it 2pm"
+
+    update.message.reply_text.assert_awaited_once()
+    text = update.message.reply_text.call_args.args[0]
+    assert "Create this event?" in text
+
+
+async def test_handle_callback_approve_resumes_agent_with_approve_decision() -> None:
+    """Test that the approve button resumes the agent with an approve decision."""
+    from langgraph.types import Command
+
+    from src.telegram.approval import APPROVE_CALLBACK
+    from src.telegram.bot import handle_callback
+
+    agent = MagicMock()
+    agent.ainvoke = AsyncMock(return_value={"messages": [AIMessage(content="Created.")]})
+
+    update = MagicMock()
+    update.effective_chat.id = 12345
+    update.effective_user.id = 11111
+    query = MagicMock()
+    query.data = APPROVE_CALLBACK
+    query.answer = AsyncMock()
+    query.message.reply_text = AsyncMock()
+    query.message.edit_reply_markup = AsyncMock()
+    update.callback_query = query
+
+    settings_mock = MagicMock()
+    settings_mock.allowed_telegram_user_ids = [11111]
+    context = MagicMock()
+    context.bot_data = {"agent": agent, "settings": settings_mock}
+
+    await handle_callback(update, context)
+
+    query.answer.assert_awaited_once()
+    agent.ainvoke.assert_awaited_once()
+    sent_input = agent.ainvoke.call_args.args[0]
+    assert isinstance(sent_input, Command)
+    assert sent_input.resume == {"decisions": [{"type": "approve"}]}
+    query.message.reply_text.assert_awaited_once_with("Created.")
+
+
+async def test_handle_callback_reject_resumes_with_reject_and_cancellation() -> None:
+    """Test that the reject button resumes the agent with a reject decision."""
+    from langgraph.types import Command
+
+    from src.telegram.approval import REJECT_CALLBACK
+    from src.telegram.bot import handle_callback
+
+    agent = MagicMock()
+    agent.ainvoke = AsyncMock(return_value={"messages": [AIMessage(content="OK, cancelled.")]})
+
+    update = MagicMock()
+    update.effective_chat.id = 12345
+    update.effective_user.id = 11111
+    query = MagicMock()
+    query.data = REJECT_CALLBACK
+    query.answer = AsyncMock()
+    query.message.reply_text = AsyncMock()
+    query.message.edit_reply_markup = AsyncMock()
+    update.callback_query = query
+
+    settings_mock = MagicMock()
+    settings_mock.allowed_telegram_user_ids = [11111]
+    context = MagicMock()
+    context.bot_data = {"agent": agent, "settings": settings_mock}
+
+    await handle_callback(update, context)
+
+    sent_input = agent.ainvoke.call_args.args[0]
+    assert isinstance(sent_input, Command)
+    decisions = sent_input.resume["decisions"]
+    assert decisions[0]["type"] == "reject"
+    assert "feedback" not in decisions[0]
+    query.message.reply_text.assert_awaited_once_with("OK, cancelled.")
+
+
+async def test_handle_callback_edit_posts_hint_without_resuming() -> None:
+    """Test that the edit button posts a hint without resuming the agent."""
+    from src.telegram.approval import EDIT_CALLBACK, EDIT_HINT
+    from src.telegram.bot import handle_callback
+
+    agent = MagicMock()
+    agent.ainvoke = AsyncMock()
+
+    update = MagicMock()
+    update.effective_chat.id = 12345
+    update.effective_user.id = 11111
+    query = MagicMock()
+    query.data = EDIT_CALLBACK
+    query.answer = AsyncMock()
+    query.message.reply_text = AsyncMock()
+    query.message.edit_reply_markup = AsyncMock()
+    update.callback_query = query
+
+    settings_mock = MagicMock()
+    settings_mock.allowed_telegram_user_ids = [11111]
+    context = MagicMock()
+    context.bot_data = {"agent": agent, "settings": settings_mock}
+
+    await handle_callback(update, context)
+
+    query.answer.assert_awaited_once()
+    query.message.reply_text.assert_awaited_once_with(EDIT_HINT)
+    agent.ainvoke.assert_not_awaited()
+
+
+def test_build_application_registers_message_and_callback_handlers(settings_env, mocker) -> None:
+    """Test that build_application registers message and callback handlers."""
+    from telegram.ext import CallbackQueryHandler, MessageHandler
+
     app_mock = MagicMock(name="application")
     app_mock.bot_data = {}
     builder_mock = MagicMock()
@@ -176,6 +392,37 @@ def test_build_application_registers_filtered_handler(settings_env, mocker) -> N
 
     builder_mock.token.assert_called_once()
     assert app.bot_data["agent"] is not None
-    # Cast to Any to allow mock assertion
     app_any: Any = app
-    app_any.add_handler.assert_called_once()
+    handlers = [call.args[0] for call in app_any.add_handler.call_args_list]
+    assert any(isinstance(h, MessageHandler) for h in handlers)
+    assert any(isinstance(h, CallbackQueryHandler) for h in handlers)
+
+
+async def test_handle_callback_rejects_unauthorized_user() -> None:
+    """Test that callbacks from unauthorized users are rejected without invoking the agent."""
+    from src.telegram.approval import APPROVE_CALLBACK
+    from src.telegram.bot import handle_callback
+
+    agent = MagicMock()
+    agent.ainvoke = AsyncMock()
+
+    update = MagicMock()
+    update.effective_chat.id = 12345
+    update.effective_user.id = 99999  # Unauthorized user
+    query = MagicMock()
+    query.data = APPROVE_CALLBACK
+    query.answer = AsyncMock()
+    query.message.reply_text = AsyncMock()
+    update.callback_query = query
+
+    settings_mock = MagicMock()
+    settings_mock.allowed_telegram_user_ids = [11111, 22222]  # Authorized users
+
+    context = MagicMock()
+    context.bot_data = {"agent": agent, "settings": settings_mock}
+
+    await handle_callback(update, context)
+
+    query.answer.assert_awaited_once()
+    agent.ainvoke.assert_not_awaited()
+    query.message.reply_text.assert_not_awaited()

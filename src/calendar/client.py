@@ -145,3 +145,47 @@ class GoogleCalendarClient:
             raise CalendarClientError(f"get_event failed: {exc}") from exc
 
         return _strip_nones(_compact(response))
+
+    async def create_event(
+        self,
+        *,
+        summary: str,
+        start: str,
+        end: str,
+        description: str | None = None,
+        location: str | None = None,
+    ) -> dict[str, Any]:
+        """Create a timed event on the configured calendar.
+
+        Args:
+            summary: Event title.
+            start: ISO 8601 datetime with timezone (start, inclusive).
+            end: ISO 8601 datetime with timezone (end, exclusive).
+            description: Optional event description / notes.
+            location: Optional event location string.
+
+        Returns:
+            The compacted inserted event.
+
+        Raises:
+            CalendarClientError: If the Calendar API call fails.
+        """
+        body: dict[str, Any] = {
+            "summary": summary,
+            "start": {"dateTime": start},
+            "end": {"dateTime": end},
+        }
+        if description is not None:
+            body["description"] = description
+        if location is not None:
+            body["location"] = location
+
+        def _call() -> dict[str, Any]:
+            return self._service.events().insert(calendarId=self._calendar_id, body=body).execute()
+
+        try:
+            response = await asyncio.to_thread(_call)
+        except HttpError as exc:
+            raise CalendarClientError(f"create_event failed: {exc}") from exc
+
+        return _strip_nones(_compact(response))

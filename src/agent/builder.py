@@ -9,7 +9,11 @@ from typing import Any
 from zoneinfo import ZoneInfo
 
 from langchain.agents import create_agent
-from langchain.agents.middleware import ModelRequest, dynamic_prompt
+from langchain.agents.middleware import (
+    HumanInTheLoopMiddleware,
+    ModelRequest,
+    dynamic_prompt,
+)
 from langchain.chat_models import init_chat_model
 
 from src.agent.prompt_loader import PromptLoader
@@ -123,9 +127,15 @@ async def build_agent(
         template = await loader.get_template()
         return render_system_prompt(template=template, timezone=timezone, now_provider=now_provider)
 
+    hitl = HumanInTheLoopMiddleware(
+        interrupt_on={
+            "create_event": {"allowed_decisions": ["approve", "reject"]},
+        }
+    )
+
     return create_agent(
         model=model,
         tools=tools,
-        middleware=[_system_prompt],
+        middleware=[_system_prompt, hitl],
         checkpointer=checkpointer,
     )
