@@ -25,6 +25,9 @@ def _warn_if_insufficient_scope(token_path: Path) -> None:
 
     No-op when the token file is absent or unreadable; ``load_credentials``
     will surface a clearer error in those cases.
+
+    Args:
+        token_path: Path to the saved Google OAuth token file.
     """
     if not token_path.exists():
         return

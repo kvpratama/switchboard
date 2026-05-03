@@ -41,7 +41,11 @@ def render_approval_message(args: dict[str, Any]) -> str:
 
 
 def render_approval_keyboard() -> InlineKeyboardMarkup:
-    """Return the inline keyboard with Approve / Edit / Reject buttons."""
+    """Return the inline keyboard with Approve / Edit / Reject buttons.
+
+    Returns:
+        InlineKeyboardMarkup with three buttons for user approval workflow.
+    """
     return InlineKeyboardMarkup(
         [
             [
@@ -72,6 +76,13 @@ def extract_create_event_args(interrupt_value: Any) -> dict[str, Any] | None:
 
     def _walk(node: Any) -> dict[str, Any] | None:
         if isinstance(node, dict):
+            action_requests = node.get("action_requests")
+            if isinstance(action_requests, list):
+                for req in action_requests:
+                    if isinstance(req, dict) and req.get("name") == "create_event":
+                        args = req.get("args")
+                        if isinstance(args, dict):
+                            return args
             action = node.get("action")
             if action == "create_event" and isinstance(node.get("args"), dict):
                 return node["args"]

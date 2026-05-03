@@ -205,3 +205,59 @@ async def test_agent_resumes_and_calls_create_event_on_approve(settings_env, moc
 
     fake_client.create_event.assert_awaited_once()
     assert "__interrupt__" not in result
+
+
+async def test_agent_resumes_and_does_not_call_create_event_on_reject(settings_env, mocker) -> None:
+    from langchain_core.messages import AIMessage
+    from langgraph.checkpoint.memory import MemorySaver
+    from langgraph.types import Command
+
+    from src.agent.builder import build_agent
+
+    fake_client = MagicMock()
+    fake_client.create_event = mocker.AsyncMock(return_value={"id": "evt-new"})
+    fake_client.get_timezone = mocker.AsyncMock(return_value="Asia/Tokyo")
+
+    first_call = AIMessage(
+        content="",
+        tool_calls=[
+            {
+                "name": "create_event",
+                "args": {
+                    "summary": "Lunch",
+                    "start": "2026-05-03T13:00:00+09:00",
+                    "end": "2026-05-03T14:00:00+09:00",
+                },
+                "id": "call-1",
+                "type": "tool_call",
+            }
+        ],
+    )
+    final_text = AIMessage(content="Cancelled.")
+
+    fake_model = MagicMock()
+    fake_model.ainvoke = mocker.AsyncMock(side_effect=[first_call, final_text])
+    fake_model.bind_tools = MagicMock(return_value=fake_model)
+    mocker.patch("src.agent.builder.init_chat_model", return_value=fake_model)
+
+    checkpointer = MemorySaver()
+    agent = await build_agent(
+        settings=Settings(),
+        checkpointer=checkpointer,
+        calendar_client=fake_client,
+        timezone="Asia/Tokyo",
+    )
+
+    config = {"configurable": {"thread_id": "test-3"}}
+    await agent.ainvoke(
+        {"messages": [{"role": "user", "content": "schedule lunch"}]},
+        config=config,
+    )
+
+    result = await agent.ainvoke(
+        Command(resume={"decisions": [{"type": "reject"}]}),
+        config=config,
+    )
+
+    fake_client.create_event.assert_not_awaited()
+    assert "__interrupt__" not in result

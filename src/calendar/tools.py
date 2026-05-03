@@ -25,7 +25,7 @@ def build_calendar_tools(client: GoogleCalendarClient) -> list[BaseTool]:
         List of LangChain ``BaseTool`` instances suitable for ``create_agent``.
     """
 
-    @tool
+    @tool("list_events")
     async def list_events(
         time_min: str,
         time_max: str,
@@ -47,11 +47,11 @@ def build_calendar_tools(client: GoogleCalendarClient) -> list[BaseTool]:
                 time_max=time_max,
                 max_results=max_results,
             )
-        except CalendarClientError as exc:
-            return f"Error: {exc}"
+        except CalendarClientError:
+            return "Unable to retrieve events. Please check your calendar permissions."
         return json.dumps(events)
 
-    @tool
+    @tool("search_events")
     async def search_events(
         query: str,
         time_min: str,
@@ -76,11 +76,11 @@ def build_calendar_tools(client: GoogleCalendarClient) -> list[BaseTool]:
                 time_max=time_max,
                 max_results=max_results,
             )
-        except CalendarClientError as exc:
-            return f"Error: {exc}"
+        except CalendarClientError:
+            return "Unable to search events. Please check your calendar permissions."
         return json.dumps(events)
 
-    @tool
+    @tool("get_event")
     async def get_event(event_id: str) -> str:
         """Fetch a single event's full details by ID.
 
@@ -92,11 +92,11 @@ def build_calendar_tools(client: GoogleCalendarClient) -> list[BaseTool]:
         """
         try:
             event: dict[str, Any] = await client.get_event(event_id)
-        except CalendarClientError as exc:
-            return f"Error: {exc}"
+        except CalendarClientError:
+            return "Unable to retrieve event. Please check your calendar permissions."
         return json.dumps(event)
 
-    @tool
+    @tool("create_event")
     async def create_event(
         summary: str,
         start: str,
@@ -127,8 +127,8 @@ def build_calendar_tools(client: GoogleCalendarClient) -> list[BaseTool]:
                 description=description,
                 location=location,
             )
-        except CalendarClientError as exc:
-            return f"Error: {exc}"
+        except CalendarClientError:
+            return "Unable to create event. Please check your calendar permissions."
         return json.dumps(event)
 
     return [list_events, search_events, get_event, create_event]

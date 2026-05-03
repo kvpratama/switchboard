@@ -278,13 +278,16 @@ async def test_handle_callback_approve_resumes_agent_with_approve_decision() -> 
 
     update = MagicMock()
     update.effective_chat.id = 12345
+    update.effective_user.id = 11111
     query = MagicMock()
     query.data = APPROVE_CALLBACK
     query.answer = AsyncMock()
     query.message.reply_text = AsyncMock()
+    query.message.edit_reply_markup = AsyncMock()
     update.callback_query = query
 
     settings_mock = MagicMock()
+    settings_mock.allowed_telegram_user_ids = [11111]
     context = MagicMock()
     context.bot_data = {"agent": agent, "settings": settings_mock}
 
@@ -309,13 +312,16 @@ async def test_handle_callback_reject_resumes_with_reject_and_cancellation() -> 
 
     update = MagicMock()
     update.effective_chat.id = 12345
+    update.effective_user.id = 11111
     query = MagicMock()
     query.data = REJECT_CALLBACK
     query.answer = AsyncMock()
     query.message.reply_text = AsyncMock()
+    query.message.edit_reply_markup = AsyncMock()
     update.callback_query = query
 
     settings_mock = MagicMock()
+    settings_mock.allowed_telegram_user_ids = [11111]
     context = MagicMock()
     context.bot_data = {"agent": agent, "settings": settings_mock}
 
@@ -325,7 +331,7 @@ async def test_handle_callback_reject_resumes_with_reject_and_cancellation() -> 
     assert isinstance(sent_input, Command)
     decisions = sent_input.resume["decisions"]
     assert decisions[0]["type"] == "reject"
-    assert "cancel" in decisions[0]["feedback"].lower()
+    assert "feedback" not in decisions[0]
     query.message.reply_text.assert_awaited_once_with("OK, cancelled.")
 
 
@@ -338,13 +344,16 @@ async def test_handle_callback_edit_posts_hint_without_resuming() -> None:
 
     update = MagicMock()
     update.effective_chat.id = 12345
+    update.effective_user.id = 11111
     query = MagicMock()
     query.data = EDIT_CALLBACK
     query.answer = AsyncMock()
     query.message.reply_text = AsyncMock()
+    query.message.edit_reply_markup = AsyncMock()
     update.callback_query = query
 
     settings_mock = MagicMock()
+    settings_mock.allowed_telegram_user_ids = [11111]
     context = MagicMock()
     context.bot_data = {"agent": agent, "settings": settings_mock}
 
@@ -356,6 +365,8 @@ async def test_handle_callback_edit_posts_hint_without_resuming() -> None:
 
 
 def test_build_application_registers_message_and_callback_handlers(settings_env, mocker) -> None:
+    from telegram.ext import CallbackQueryHandler, MessageHandler
+
     app_mock = MagicMock(name="application")
     app_mock.bot_data = {}
     builder_mock = MagicMock()
@@ -373,27 +384,35 @@ def test_build_application_registers_message_and_callback_handlers(settings_env,
     builder_mock.token.assert_called_once()
     assert app.bot_data["agent"] is not None
     app_any: Any = app
-    assert app_any.add_handler.call_count == 2
+    handlers = [call.args[0] for call in app_any.add_handler.call_args_list]
+    assert any(isinstance(h, MessageHandler) for h in handlers)
+    assert any(isinstance(h, CallbackQueryHandler) for h in handlers)
 
 
-def test_build_application_registers_filtered_handler(settings_env, mocker) -> None:
-    app_mock = MagicMock(name="application")
-    app_mock.bot_data = {}
-    builder_mock = MagicMock()
-    builder_mock.token.return_value = builder_mock
-    builder_mock.build.return_value = app_mock
-    mocker.patch("src.telegram.bot.Application.builder", return_value=builder_mock)
+async def test_handle_callback_rejects_unauthorized_user() -> None:
+    from src.telegram.approval import APPROVE_CALLBACK
+    from src.telegram.bot import handle_callback
 
-    from typing import Any
+    agent = MagicMock()
+    agent.ainvoke = AsyncMock()
 
-    from src.core.config import Settings
-    from src.telegram.bot import build_application
+    update = MagicMock()
+    update.effective_chat.id = 12345
+    update.effective_user.id = 99999  # Unauthorized user
+    query = MagicMock()
+    query.data = APPROVE_CALLBACK
+    query.answer = AsyncMock()
+    query.message.reply_text = AsyncMock()
+    update.callback_query = query
 
-    app = build_application(settings=Settings(), agent=MagicMock())
+    settings_mock = MagicMock()
+    settings_mock.allowed_telegram_user_ids = [11111, 22222]  # Authorized users
 
-    builder_mock.token.assert_called_once()
-    assert app.bot_data["agent"] is not None
-    # Cast to Any to allow mock assertion
-    app_any: Any = app
-    # MessageHandler + CallbackQueryHandler
-    assert app_any.add_handler.call_count == 2
+    context = MagicMock()
+    context.bot_data = {"agent": agent, "settings": settings_mock}
+
+    await handle_callback(update, context)
+
+    query.answer.assert_awaited_once()
+    agent.ainvoke.assert_not_awaited()
+    query.message.reply_text.assert_not_awaited()

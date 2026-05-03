@@ -76,8 +76,7 @@ async def test_tool_returns_error_string_on_client_failure() -> None:
         }
     )
 
-    assert "Error:" in result
-    assert "boom" in result
+    assert result == "Unable to retrieve events. Please check your calendar permissions."
 
 
 def test_build_calendar_tools_returns_four_tools() -> None:
@@ -155,5 +154,4 @@ async def test_create_event_tool_returns_error_string_on_failure() -> None:
         }
     )
 
-    assert "Error:" in result
-    assert "boom" in result
+    assert result == "Unable to create event. Please check your calendar permissions."

@@ -15,7 +15,10 @@ from src.auth.google_oauth import (
 
 
 def test_events_scopes_grant_read_and_write() -> None:
-    assert EVENTS_SCOPES == ["https://www.googleapis.com/auth/calendar.events"]
+    assert EVENTS_SCOPES == [
+        "https://www.googleapis.com/auth/calendar.events",
+        "https://www.googleapis.com/auth/calendar.settings.readonly",
+    ]
 
 
 def test_load_credentials_reads_token_file(tmp_path: Path, mocker) -> None:

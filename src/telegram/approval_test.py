@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 from src.telegram.approval import (
     APPROVE_CALLBACK,
     EDIT_CALLBACK,
@@ -83,3 +85,74 @@ def test_extract_create_event_args_finds_first_create_event_call() -> None:
 def test_extract_create_event_args_returns_none_when_absent() -> None:
     assert extract_create_event_args([]) is None
     assert extract_create_event_args(None) is None
+
+
+def test_extract_create_event_args_finds_direct_action_shape() -> None:
+    interrupt_value = [
+        {
+            "action": "create_event",
+            "args": {
+                "summary": "Coffee",
+                "start": "2026-05-04T09:00:00+09:00",
+                "end": "2026-05-04T10:00:00+09:00",
+            },
+        }
+    ]
+
+    args = extract_create_event_args(interrupt_value)
+
+    assert args == {
+        "summary": "Coffee",
+        "start": "2026-05-04T09:00:00+09:00",
+        "end": "2026-05-04T10:00:00+09:00",
+    }
+
+
+def test_extract_create_event_args_finds_value_wrapped_shape() -> None:
+    class ValueWrapper:
+        def __init__(self, value: Any) -> None:
+            self.value = value
+
+    interrupt_value = ValueWrapper(
+        {
+            "action": "create_event",
+            "args": {
+                "summary": "Meeting",
+                "start": "2026-05-05T15:00:00+09:00",
+                "end": "2026-05-05T16:00:00+09:00",
+            },
+        }
+    )
+
+    args = extract_create_event_args(interrupt_value)
+
+    assert args == {
+        "summary": "Meeting",
+        "start": "2026-05-05T15:00:00+09:00",
+        "end": "2026-05-05T16:00:00+09:00",
+    }
+
+
+def test_extract_create_event_args_finds_action_requests_shape() -> None:
+    interrupt_value = [
+        {
+            "action_requests": [
+                {
+                    "name": "create_event",
+                    "args": {
+                        "summary": "Lunch with team",
+                        "start": "2026-05-04T12:30:00+00:00",
+                        "end": "2026-05-04T13:30:00+00:00",
+                    },
+                }
+            ]
+        }
+    ]
+
+    args = extract_create_event_args(interrupt_value)
+
+    assert args == {
+        "summary": "Lunch with team",
+        "start": "2026-05-04T12:30:00+00:00",
+        "end": "2026-05-04T13:30:00+00:00",
+    }

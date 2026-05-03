@@ -11,7 +11,10 @@ from pathlib import Path
 from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
 
-EVENTS_SCOPES: list[str] = ["https://www.googleapis.com/auth/calendar.events"]
+EVENTS_SCOPES: list[str] = [
+    "https://www.googleapis.com/auth/calendar.events",
+    "https://www.googleapis.com/auth/calendar.settings.readonly",
+]
 
 
 class GoogleAuthError(RuntimeError):
