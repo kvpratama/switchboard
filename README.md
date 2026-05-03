@@ -4,15 +4,13 @@ A self-hosted Telegram bot that answers natural-language questions about
 your Google Calendar. You run your own instance with your own Google account
 and Telegram bot — no shared servers, no third-party access to your data.
 
-**v1 capabilities (read-only):**
+**Capabilities:**
 
-- "What's on my calendar today?"
-- "When is my next meeting with Alex?"
-- "Do I have anything Friday afternoon?"
-- Multi-turn follow-ups ("and tomorrow?")
+- **Read (v1):** "What's on my calendar today?" / "When is my next meeting with Alex?" / "Do I have anything Friday afternoon?"
+- **Create events (v2):** "Schedule lunch with Sarah tomorrow at 1pm" — the bot drafts the event and asks for approval via inline `[✅] [✏️] [❌]` buttons before writing to Google Calendar. Free-text replies during a pending draft refine it.
+- Multi-turn follow-ups ("and tomorrow?") and persistent conversation memory.
 
-Future versions will add event creation, updates, deletion, and proactive
-reminders, each gated by an explicit Telegram approval.
+Future versions will add event updates, deletion, and proactive reminders.
 
 ---
 
@@ -61,7 +59,7 @@ cp .env.example .env
 uv run python -m src.auth.bootstrap
 ```
 
-A browser opens. Sign in with the Gmail address you added as a test user. You'll see a **"Google hasn't verified this app"** warning — click **Advanced → Go to Switchboard (unsafe) → Continue** and grant read-only calendar access. The token is saved to `data/token.json`.
+A browser opens. Sign in with the Gmail address you added as a test user. You'll see a **"Google hasn't verified this app"** warning — click **Advanced → Go to Switchboard (unsafe) → Continue** and grant calendar access. The token is saved to `data/token.json`.
 
 **Headless server?** Run the bootstrap on your laptop, then copy
 `data/token.json` to the same path on the server. Alternatively, SSH-tunnel
@@ -99,6 +97,13 @@ The bot should remember Friday's events. If not, check that `data/checkpoints.sq
 1. Have a conversation, then stop the bot (Ctrl+C)
 2. Restart: `uv run python main.py`
 3. Send a follow-up — it should remember the prior session
+
+### Event creation
+1. Send `schedule lunch tomorrow at 1pm` — the bot replies with a draft and three buttons.
+2. Tap **✅ Approve** — the event appears in your Google Calendar.
+3. Try `schedule coffee Friday 9am`, then tap **✏️ Edit** and reply `make it 10am`. The bot re-drafts at 10am.
+4. Try the same and tap **❌ Reject** — the bot acknowledges and writes nothing.
+5. While a draft is pending, send free text like `make it 2pm instead` — the bot treats it as an edit and re-drafts.
 
 ## Optional: LangSmith tracing
 
