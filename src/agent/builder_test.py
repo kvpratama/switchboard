@@ -61,6 +61,33 @@ def test_fallback_system_template_has_required_placeholders() -> None:
     assert "{day_of_week}" in FALLBACK_SYSTEM_TEMPLATE
 
 
+async def test_build_agent_skips_hitl_when_disabled(settings_env, mocker) -> None:
+    """When enable_hitl=False, no HumanInTheLoopMiddleware is passed."""
+    fake_model = FakeListChatModel(responses=["ok"])
+    mocker.patch("src.agent.builder.init_chat_model", return_value=fake_model)
+    fake_client = MagicMock()
+    mocker.patch("src.agent.builder.GoogleCalendarClient", return_value=fake_client)
+    fake_tools = [MagicMock(name="t1")]
+    mocker.patch("src.agent.builder.build_calendar_tools", return_value=fake_tools)
+
+    captured: dict[str, object] = {}
+
+    def fake_create_agent(**kwargs: object) -> object:
+        captured.update(kwargs)
+        return MagicMock(name="agent")
+
+    mocker.patch("src.agent.builder.create_agent", side_effect=fake_create_agent)
+    mock_loader = MagicMock()
+    mock_loader.get_template = MagicMock(return_value="test template")
+    mocker.patch("src.agent.builder.PromptLoader", return_value=mock_loader)
+
+    await build_agent(settings=Settings(), checkpointer=None, enable_hitl=False)
+
+    middleware = captured.get("middleware", [])
+    middleware_types = [type(m).__name__ for m in middleware]  # ty: ignore[not-iterable]
+    assert "HumanInTheLoopMiddleware" not in middleware_types
+
+
 async def test_build_agent_wires_model_and_tools(settings_env, mocker) -> None:
     fake_model = FakeListChatModel(responses=["ok"])
     init = mocker.patch("src.agent.builder.init_chat_model", return_value=fake_model)

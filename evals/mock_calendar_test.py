@@ -61,3 +61,75 @@ async def test_get_timezone_returns_real_string_not_async_mock() -> None:
     tz = await client.get_timezone()
 
     assert tz == "Asia/Tokyo"
+
+
+async def test_create_event_records_call_and_returns_event() -> None:
+    wrapper = MockCalendarClient()
+    client = wrapper.get_mock()
+
+    result = await client.create_event(
+        summary="Lunch",
+        start="2026-04-30T13:00:00+09:00",
+        end="2026-04-30T14:00:00+09:00",
+    )
+
+    assert result["summary"] == "Lunch"
+    assert result["start"]["dateTime"] == "2026-04-30T13:00:00+09:00"
+    assert result["end"]["dateTime"] == "2026-04-30T14:00:00+09:00"
+    assert result["id"].startswith("mock-event-")
+
+
+async def test_create_event_records_optional_fields() -> None:
+    wrapper = MockCalendarClient()
+    client = wrapper.get_mock()
+
+    result = await client.create_event(
+        summary="Dentist",
+        start="2026-05-04T15:00:00+09:00",
+        end="2026-05-04T16:00:00+09:00",
+        description="Bring insurance card",
+        location="Downtown Dental",
+    )
+
+    assert result["description"] == "Bring insurance card"
+    assert result["location"] == "Downtown Dental"
+
+
+async def test_get_created_events_returns_recorded_calls() -> None:
+    wrapper = MockCalendarClient()
+    client = wrapper.get_mock()
+
+    await client.create_event(
+        summary="Lunch",
+        start="2026-04-30T13:00:00+09:00",
+        end="2026-04-30T14:00:00+09:00",
+    )
+    await client.create_event(
+        summary="Dentist",
+        start="2026-05-04T15:00:00+09:00",
+        end="2026-05-04T16:00:00+09:00",
+    )
+
+    created = wrapper.get_created_events()
+    assert len(created) == 2
+    assert created[0]["summary"] == "Lunch"
+    assert created[1]["summary"] == "Dentist"
+
+
+async def test_reset_clears_created_events() -> None:
+    wrapper = MockCalendarClient()
+    client = wrapper.get_mock()
+
+    await client.create_event(
+        summary="Lunch",
+        start="2026-04-30T13:00:00+09:00",
+        end="2026-04-30T14:00:00+09:00",
+    )
+
+    wrapper.reset()
+    assert wrapper.get_created_events() == []
+
+
+async def test_get_created_events_empty_by_default() -> None:
+    wrapper = MockCalendarClient()
+    assert wrapper.get_created_events() == []

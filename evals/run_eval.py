@@ -8,7 +8,11 @@ from langsmith import aevaluate
 
 from evals.dataset import ensure_dataset
 from evals.evaluators import accuracy_evaluator
-from evals.evaluators_code import response_length_evaluator
+from evals.evaluators_code import (
+    parameter_accuracy_evaluator,
+    response_length_evaluator,
+    tool_invocation_evaluator,
+)
 from evals.run_agent import run_agent
 
 # Load environment variables from .env
@@ -19,7 +23,10 @@ async def _run() -> None:
     print("Starting Switchboard evaluation...")
     dataset_name = await ensure_dataset()
     print(f"Dataset: {dataset_name}")
-    print("Evaluators: accuracy_evaluator, response_length_evaluator")
+    print(
+        "Evaluators: accuracy_evaluator, response_length_evaluator, "
+        "tool_invocation_evaluator, parameter_accuracy_evaluator"
+    )
     print("-" * 60)
 
     results = await aevaluate(
@@ -29,7 +36,12 @@ async def _run() -> None:
         # `EvaluationResult` TypedDicts are structurally compatible at runtime.
         evaluators=cast(
             "list[Any]",
-            [accuracy_evaluator, response_length_evaluator],
+            [
+                accuracy_evaluator,
+                response_length_evaluator,
+                tool_invocation_evaluator,
+                parameter_accuracy_evaluator,
+            ],
         ),
         experiment_prefix="switchboard-eval",
         max_concurrency=3,
