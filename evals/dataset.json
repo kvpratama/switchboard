@@ -4,7 +4,16 @@
       "query": "What's on my calendar today?"
     },
     "outputs": {
-      "response": "You have 2 events today: Team Meeting at 10:00 AM in Conference Room A, and Lunch with Alex at 12:30 PM at Cafe Downtown."
+      "response": "You have 2 events today: Team Meeting at 10:00 AM in Conference Room A, and Lunch with Alex at 12:30 PM at Cafe Downtown.",
+      "tool_calls": [
+        {
+          "tool": "list_events",
+          "args": {
+            "time_min": "2026-04-29T00:00:00+09:00",
+            "time_max": "2026-04-30T00:00:00+09:00"
+          }
+        }
+      ]
     }
   },
   {
@@ -12,7 +21,16 @@
       "query": "Do I have anything tomorrow?"
     },
     "outputs": {
-      "response": "Yes, you have 2 events tomorrow: Project Review at 2:00 PM on Zoom, and 1-on-1 with Sarah at 4:00 PM."
+      "response": "Yes, you have 2 events tomorrow: Project Review at 2:00 PM on Zoom, and 1-on-1 with Sarah at 4:00 PM.",
+      "tool_calls": [
+        {
+          "tool": "list_events",
+          "args": {
+            "time_min": "2026-04-30T00:00:00+09:00",
+            "time_max": "2026-05-01T00:00:00+09:00"
+          }
+        }
+      ]
     }
   },
   {
@@ -20,7 +38,16 @@
       "query": "What's happening Friday afternoon?"
     },
     "outputs": {
-      "response": "On Friday afternoon, you have Code Review at 3:00 PM."
+      "response": "On Friday afternoon, you have Code Review at 3:00 PM.",
+      "tool_calls": [
+        {
+          "tool": "list_events",
+          "args": {
+            "time_min": "2026-05-01T12:00:00+09:00",
+            "time_max": "2026-05-01T18:00:00+09:00"
+          }
+        }
+      ]
     }
   },
   {
@@ -28,7 +55,17 @@
       "query": "When is my next meeting with Alex?"
     },
     "outputs": {
-      "response": "Your next meeting with Alex is Lunch with Alex on April 29 at 12:30 PM at Cafe Downtown."
+      "response": "Your next meeting with Alex is Lunch with Alex on April 29 at 12:30 PM at Cafe Downtown.",
+      "tool_calls": [
+        {
+          "tool": "search_events",
+          "args": {
+            "query": "Alex",
+            "time_min": "2026-04-29T00:00:00+09:00",
+            "time_max": "2026-05-29T00:00:00+09:00"
+          }
+        }
+      ]
     }
   },
   {
@@ -36,7 +73,17 @@
       "query": "Find my client call"
     },
     "outputs": {
-      "response": "I found Client Call on May 1 at 9:00 AM."
+      "response": "I found Client Call on May 1 at 9:00 AM.",
+      "tool_calls": [
+        {
+          "tool": "search_events",
+          "args": {
+            "query": "client call",
+            "time_min": "2026-04-29T00:00:00+09:00",
+            "time_max": "2026-05-29T00:00:00+09:00"
+          }
+        }
+      ]
     }
   },
   {
@@ -44,7 +91,17 @@
       "query": "Where is the team meeting?"
     },
     "outputs": {
-      "response": "The Team Meeting is in Conference Room A."
+      "response": "The Team Meeting is in Conference Room A.",
+      "tool_calls": [
+        {
+          "tool": "search_events",
+          "args": {
+            "query": "team meeting",
+            "time_min": "2026-04-29T00:00:00+09:00",
+            "time_max": "2026-05-29T00:00:00+09:00"
+          }
+        }
+      ]
     }
   },
   {
@@ -52,7 +109,16 @@
       "query": "Do I have any events on Friday?"
     },
     "outputs": {
-      "response": "Yes, you have 3 events on Friday: Client Call at 9:00 AM, Team Lunch at 12:00 PM at Italian Restaurant, and Code Review at 3:00 PM."
+      "response": "Yes, you have 3 events on Friday: Client Call at 9:00 AM, Team Lunch at 12:00 PM at Italian Restaurant, and Code Review at 3:00 PM.",
+      "tool_calls": [
+        {
+          "tool": "list_events",
+          "args": {
+            "time_min": "2026-05-01T00:00:00+09:00",
+            "time_max": "2026-05-02T00:00:00+09:00"
+          }
+        }
+      ]
     }
   },
   {
@@ -60,7 +126,17 @@
       "query": "What time is the project review?"
     },
     "outputs": {
-      "response": "The Project Review is at 2:00 PM on April 30."
+      "response": "The Project Review is at 2:00 PM on April 30.",
+      "tool_calls": [
+        {
+          "tool": "search_events",
+          "args": {
+            "query": "project review",
+            "time_min": "2026-04-29T00:00:00+09:00",
+            "time_max": "2026-05-29T00:00:00+09:00"
+          }
+        }
+      ]
     }
   },
   {
@@ -68,7 +144,16 @@
       "query": "Show me tomorrow afternoon"
     },
     "outputs": {
-      "response": "Tomorrow afternoon you have: Project Review at 2:00 PM on Zoom, and 1-on-1 with Sarah at 4:00 PM."
+      "response": "Tomorrow afternoon you have: Project Review at 2:00 PM on Zoom, and 1-on-1 with Sarah at 4:00 PM.",
+      "tool_calls": [
+        {
+          "tool": "list_events",
+          "args": {
+            "time_min": "2026-04-30T12:00:00+09:00",
+            "time_max": "2026-04-30T18:00:00+09:00"
+          }
+        }
+      ]
     }
   },
   {
@@ -76,7 +161,136 @@
       "query": "Any lunch plans?"
     },
     "outputs": {
-      "response": "Yes, you have Lunch with Alex today at 12:30 PM at Cafe Downtown, and Team Lunch on Friday at 12:00 PM at Italian Restaurant."
+      "response": "Yes, you have Lunch with Alex today at 12:30 PM at Cafe Downtown, and Team Lunch on Friday at 12:00 PM at Italian Restaurant.",
+      "tool_calls": [
+        {
+          "tool": "search_events",
+          "args": {
+            "query": "lunch",
+            "time_min": "2026-04-29T00:00:00+09:00",
+            "time_max": "2026-05-29T00:00:00+09:00"
+          }
+        }
+      ]
+    }
+  },
+  {
+    "inputs": {
+      "query": "Schedule lunch tomorrow at 1pm"
+    },
+    "outputs": {
+      "response": "I've scheduled lunch for tomorrow at 1:00 PM.",
+      "tool_calls": [
+        {
+          "tool": "create_event",
+          "args": {
+            "summary": "Lunch",
+            "start": "2026-04-30T13:00:00+09:00",
+            "end": "2026-04-30T14:00:00+09:00"
+          }
+        }
+      ]
+    }
+  },
+  {
+    "inputs": {
+      "query": "Book conference room A for team meeting Friday 10am"
+    },
+    "outputs": {
+      "response": "I've booked conference room A for a team meeting on Friday at 10:00 AM.",
+      "tool_calls": [
+        {
+          "tool": "create_event",
+          "args": {
+            "summary": "Team Meeting",
+            "start": "2026-05-01T10:00:00+09:00",
+            "end": "2026-05-01T11:00:00+09:00",
+            "location": "Conference Room A"
+          }
+        }
+      ]
+    }
+  },
+  {
+    "inputs": {
+      "query": "Add dentist appointment next Monday 3pm, bring insurance card"
+    },
+    "outputs": {
+      "response": "I've added a dentist appointment for next Monday at 3:00 PM.",
+      "tool_calls": [
+        {
+          "tool": "create_event",
+          "args": {
+            "summary": "Dentist Appointment",
+            "start": "2026-05-04T15:00:00+09:00",
+            "end": "2026-05-04T16:00:00+09:00",
+            "description": "Bring insurance card"
+          }
+        }
+      ]
+    }
+  },
+  {
+    "inputs": {
+      "query": "Schedule coffee Friday 9am"
+    },
+    "outputs": {
+      "response": "I've scheduled coffee for Friday at 9:00 AM.",
+      "tool_calls": [
+        {
+          "tool": "create_event",
+          "args": {
+            "summary": "Coffee",
+            "start": "2026-05-01T09:00:00+09:00",
+            "end": "2026-05-01T10:00:00+09:00"
+          }
+        }
+      ]
+    }
+  },
+  {
+    "inputs": {
+      "query": "Block 2 hours for deep work tomorrow morning at 9am"
+    },
+    "outputs": {
+      "response": "I've blocked 2 hours for deep work starting tomorrow at 9:00 AM.",
+      "tool_calls": [
+        {
+          "tool": "create_event",
+          "args": {
+            "summary": "Deep Work",
+            "start": "2026-04-30T09:00:00+09:00",
+            "end": "2026-04-30T11:00:00+09:00"
+          }
+        }
+      ]
+    }
+  },
+  {
+    "inputs": {
+      "query": "Schedule call with client tomorrow afternoon"
+    },
+    "outputs": {
+      "response": "I've scheduled a call with client for tomorrow afternoon.",
+      "tool_calls": [
+        {
+          "tool": "create_event",
+          "args": {
+            "summary": "Call with Client",
+            "start": "2026-04-30T15:00:00+09:00",
+            "end": "2026-04-30T16:00:00+09:00"
+          }
+        }
+      ]
+    }
+  },
+  {
+    "inputs": {
+      "query": "Schedule meeting yesterday"
+    },
+    "outputs": {
+      "response": "I can't schedule an event in the past. Would you like to schedule it for a future date instead?",
+      "tool_calls": []
     }
   }
 ]

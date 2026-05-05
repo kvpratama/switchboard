@@ -74,6 +74,7 @@ async def build_agent(
     calendar_client: GoogleCalendarClient | None = None,
     timezone: str | None = None,
     now_provider: Callable[[], datetime] | None = None,
+    enable_hitl: bool = True,
 ) -> Any:
     """Construct the read-only calendar agent.
 
@@ -127,15 +128,18 @@ async def build_agent(
         template = await loader.get_template()
         return render_system_prompt(template=template, timezone=timezone, now_provider=now_provider)
 
-    hitl = HumanInTheLoopMiddleware(
-        interrupt_on={
-            "create_event": {"allowed_decisions": ["approve", "reject"]},
-        }
-    )
+    middleware = [_system_prompt]
+    if enable_hitl:
+        hitl = HumanInTheLoopMiddleware(
+            interrupt_on={
+                "create_event": {"allowed_decisions": ["approve", "reject"]},
+            }
+        )
+        middleware.append(hitl)
 
     return create_agent(
         model=model,
         tools=tools,
-        middleware=[_system_prompt, hitl],
+        middleware=middleware,
         checkpointer=checkpointer,
     )
