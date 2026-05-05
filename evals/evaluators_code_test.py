@@ -109,6 +109,16 @@ def test_tool_invocation_score_1_when_no_tool_expected_and_none_called() -> None
     assert result["score"] == 1
 
 
+def test_tool_invocation_score_0_when_no_tool_expected_but_tool_called() -> None:
+    run = {"outputs": {"tool_calls": [{"tool": "create_event", "args": {}}]}}
+    example = {"outputs": {"tool_calls": []}}
+
+    result = tool_invocation_evaluator(run, example)
+
+    assert result["score"] == 0
+    assert "create_event" in result["comment"]
+
+
 def test_tool_invocation_handles_runtree_format() -> None:
     """Handle RunTree objects that use .outputs attribute instead of dict access."""
 

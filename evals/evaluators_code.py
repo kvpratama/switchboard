@@ -68,6 +68,13 @@ def _extract_tool_calls(
 
 
 class _InvocationResult(TypedDict):
+    """Result shape returned by ``tool_invocation_evaluator``.
+
+    Attributes:
+        score: ``1`` if all expected tools were invoked, ``0`` otherwise.
+        comment: Human-readable summary of expected vs. actual tool calls.
+    """
+
     score: int
     comment: str
 
@@ -93,6 +100,15 @@ def tool_invocation_evaluator(
     actual_tools = {c.get("tool") for c in actual_calls if c.get("tool")}
     expected_tools = {c.get("tool") for c in expected_calls if c.get("tool")}
 
+    # When no tools are expected, any tool call is a failure.
+    if not expected_tools:
+        if not actual_tools:
+            return {"score": 1, "comment": "No tools expected and none called"}
+        return {
+            "score": 0,
+            "comment": (f"No tools expected, but got unexpected calls: {sorted(actual_tools)}"),
+        }
+
     if expected_tools <= actual_tools:
         return {
             "score": 1,
@@ -110,6 +126,15 @@ def tool_invocation_evaluator(
 
 
 class _ParameterResult(TypedDict):
+    """Result shape returned by ``parameter_accuracy_evaluator``.
+
+    Attributes:
+        score: Fraction of matching ``create_event`` parameters in the
+            range ``0.0``–``1.0``.
+        comment: Human-readable summary listing matched and mismatched
+            parameter names.
+    """
+
     score: float
     comment: str
 

@@ -83,7 +83,10 @@ async def test_build_agent_skips_hitl_when_disabled(settings_env, mocker) -> Non
 
     await build_agent(settings=Settings(), checkpointer=None, enable_hitl=False)
 
-    middleware = captured.get("middleware", [])
+    # Ensure create_agent actually ran before asserting on its kwargs;
+    # otherwise an empty `captured` would silently pass the assertion below.
+    assert "middleware" in captured, "create_agent was not invoked by build_agent"
+    middleware = captured["middleware"]
     middleware_types = [type(m).__name__ for m in middleware]  # ty: ignore[not-iterable]
     assert "HumanInTheLoopMiddleware" not in middleware_types
 
